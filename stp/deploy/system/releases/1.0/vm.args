@@ -1,0 +1,4 @@
+## Static emulator arguments for telco_stp release 1.0.
+## Node name/cookie and controlled one-off flags are injected by entrypoint.sh.
+
++K true

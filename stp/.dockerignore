@@ -1,0 +1,16 @@
+_build/
+deploy/**
+!deploy/system/
+!deploy/system/releases/
+!deploy/system/releases/*/
+!deploy/system/releases/*/sys.config
+!deploy/system/releases/*/vm.args
+docs/
+*.beam
+erl_crash.dump
+Dockerfile*
+README.md
+build*.cmd
+build*.ps1
+start*.cmd
+start*.ps1

@@ -1,0 +1,140 @@
+#!/bin/sh
+
+set -eu
+
+SCRIPT_DIR="$(
+    CDPATH= cd -- "$(dirname -- "$0")" && pwd
+)"
+ROOTDIR="$(
+    CDPATH= cd -- "${SCRIPT_DIR}/.." && pwd
+)"
+START_DATA="${ROOTDIR}/releases/start_erl.data"
+
+[ -r "${START_DATA}" ] ||
+    {
+        printf 'Missing release data: %s\n' "${START_DATA}" >&2
+        exit 1
+    }
+
+IFS=' ' read -r ERTS_VSN REL_VSN < "${START_DATA}"
+
+case "${ERTS_VSN}:${REL_VSN}" in
+    *[!A-Za-z0-9._:-]*|:*)
+        printf '%s\n' 'Unsafe or empty releases/start_erl.data' >&2
+        exit 1
+        ;;
+esac
+
+BINDIR="${ROOTDIR}/erts-${ERTS_VSN}/bin"
+BOOT_ROOT="${ROOTDIR}/releases/${REL_VSN}/start"
+CONFIG_ROOT="${ROOTDIR}/releases/${REL_VSN}/sys"
+VM_ARGS="${ROOTDIR}/releases/${REL_VSN}/vm.args"
+CLEAN_BOOT_ROOT="${ROOTDIR}/releases/${REL_VSN}/start_clean"
+
+validate_release() {
+    [ -x "${BINDIR}/erlexec" ]
+    [ -r "${BOOT_ROOT}.boot" ]
+    [ -r "${CLEAN_BOOT_ROOT}.boot" ]
+    [ -r "${CONFIG_ROOT}.config" ]
+    [ -r "${VM_ARGS}" ]
+    [ -r "${ROOTDIR}/releases/RELEASES" ]
+}
+
+boot_release() {
+    validate_release ||
+        {
+            printf '%s\n' 'OTP release validation failed.' >&2
+            exit 1
+        }
+
+    EMU=beam
+    PROGNAME=telco_stp
+    export ROOTDIR BINDIR EMU PROGNAME
+
+    ACTIVE_CONFIG="${STP_CONFIG_FILE:-${CONFIG_ROOT}.config}"
+    case "${ACTIVE_CONFIG}" in
+        *.config)
+            ACTIVE_CONFIG_ROOT="${ACTIVE_CONFIG%.config}"
+            ;;
+        *)
+            printf '%s\n' 'STP_CONFIG_FILE must end in .config' >&2
+            exit 1
+            ;;
+    esac
+    ACTIVE_VM_ARGS="${STP_VM_ARGS_FILE:-${VM_ARGS}}"
+
+    exec "${BINDIR}/erlexec" \
+        -boot "${BOOT_ROOT}" \
+        -config "${ACTIVE_CONFIG_ROOT}" \
+        -args_file "${ACTIVE_VM_ARGS}" \
+        -mode embedded \
+        "$@"
+}
+
+eval_clean() {
+    validate_release ||
+        {
+            printf '%s\n' 'OTP release validation failed.' >&2
+            exit 1
+        }
+
+    EMU=beam
+    PROGNAME=telco_stp
+    export ROOTDIR BINDIR EMU PROGNAME
+
+    ACTIVE_CONFIG="${STP_CONFIG_FILE:-${CONFIG_ROOT}.config}"
+    case "${ACTIVE_CONFIG}" in
+        *.config)
+            ACTIVE_CONFIG_ROOT="${ACTIVE_CONFIG%.config}"
+            ;;
+        *)
+            printf '%s\n' 'STP_CONFIG_FILE must end in .config' >&2
+            exit 1
+            ;;
+    esac
+    ACTIVE_VM_ARGS="${STP_VM_ARGS_FILE:-${VM_ARGS}}"
+
+    exec "${BINDIR}/erlexec" \
+        -boot "${CLEAN_BOOT_ROOT}" \
+        -config "${ACTIVE_CONFIG_ROOT}" \
+        -args_file "${ACTIVE_VM_ARGS}" \
+        -mode embedded \
+        "$@"
+}
+
+COMMAND="${1:-help}"
+case "${COMMAND}" in
+    foreground|console)
+        shift
+        boot_release "$@"
+        ;;
+    eval)
+        shift
+        eval_clean "$@"
+        ;;
+    validate)
+        validate_release
+        printf 'OTP release %s with ERTS %s is structurally valid.\n' \
+            "${REL_VSN}" "${ERTS_VSN}"
+        ;;
+    version)
+        printf 'telco_stp release=%s erts=%s\n' \
+            "${REL_VSN}" "${ERTS_VSN}"
+        ;;
+    help|-h|--help)
+        cat <<EOF
+Usage: ${0} COMMAND [ERL_ARGS...]
+
+Commands:
+  foreground  Boot the complete embedded OTP release
+  console     Boot the release on the current terminal
+  eval        Boot only Kernel/STDLIB and pass remaining Erlang arguments
+  validate    Validate required release artifacts
+  version     Print release and ERTS versions
+EOF
+        ;;
+    *)
+        printf 'Unsupported release command: %s\n' "${COMMAND}" >&2
+        exit 2
+        ;;
+esac

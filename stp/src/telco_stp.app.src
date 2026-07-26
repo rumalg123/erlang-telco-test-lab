@@ -1,0 +1,110 @@
+{application, telco_stp, [
+    {description, "OTP 29 SS7/SIGTRAN STP interoperability lab"},
+    {vsn, "0.3.0"},
+    {registered, [
+        telco_stp_sup,
+        telco_stp_metrics,
+        telco_stp_alarm,
+        telco_stp_audit,
+        telco_stp_mgmt,
+        telco_stp_trace,
+        telco_stp_ha,
+        telco_stp_link_sup,
+        telco_stp_listener_manager,
+        telco_stp_link_manager,
+        telco_stp_route_table,
+        telco_stp_rkm,
+        telco_stp_gtt,
+        telco_stp_reassembly,
+        telco_stp_scmg,
+        telco_stp_dispatcher
+    ]},
+    {mod, {telco_stp_app, []}},
+    {applications, [kernel, stdlib, crypto]},
+    {modules, [
+        telco_stp,
+        telco_stp_alarm,
+        telco_stp_audit,
+        telco_stp_app,
+        telco_stp_bootstrap,
+        telco_stp_config,
+        telco_stp_console,
+        telco_stp_dispatcher,
+        telco_stp_gtt,
+        telco_stp_ha,
+        telco_stp_link,
+        telco_stp_link_manager,
+        telco_stp_link_sup,
+        telco_stp_listener_manager,
+        telco_stp_load,
+        telco_stp_m3ua,
+        telco_stp_m2pa,
+        telco_stp_mgmt,
+        telco_stp_metrics,
+        telco_stp_mtp3,
+        telco_stp_observability,
+        telco_stp_route_table,
+        telco_stp_rkm,
+        telco_stp_reassembly,
+        telco_stp_scmg,
+        telco_stp_sccp,
+        telco_stp_slt,
+        telco_stp_sup,
+        telco_stp_transport,
+        telco_stp_transport_loopback,
+        telco_stp_transport_sctp,
+        telco_stp_transport_sctp_inbound,
+        telco_stp_trace
+    ]},
+    {env, [
+        {links, []},
+        {routes, []},
+        {gtt_rules, []},
+        {gtt_max_chain_depth, 8},
+        {sccp_reassembly_limits, #{
+            max_contexts => 10000,
+            max_context_bytes => 65536,
+            max_total_bytes => 67108864,
+            timeout_ms => 10000
+        }},
+        {rkm_policy, #{
+            default_mode => disabled,
+            max_registrations => 4096,
+            rc_start => 10000,
+            rc_end => 4294967295
+        }},
+        {listeners, []},
+        {alarm_history_limit, 1000},
+        {active_alarm_limit, 1000},
+        {audit_history_limit, 10000},
+        {audit_log_path, undefined},
+        {management_credentials, []},
+        {trace, #{
+            enabled => false,
+            max_packets => 10000,
+            max_bytes => 67108864,
+            capture_payload => true,
+            header_bytes => 128
+        }},
+        {ha, #{
+            mode => standalone,
+            peers => [],
+            interval_ms => 1000,
+            max_staleness_ms => 10000,
+            max_clock_skew_ms => 5000,
+            replication_timeout_ms => 2000,
+            shared_secret => undefined,
+            fencing_token_sha256 => undefined,
+            snapshot_path => undefined
+        }},
+        {overload_limits, #{
+            high_watermark => 10000,
+            low_watermark => 5000
+        }},
+        {fault_profile, #{
+            drop_percent => 0,
+            duplicate_percent => 0,
+            delay_ms => 0
+        }}
+    ]}
+]}.

@@ -1,0 +1,40 @@
+**/_build/
+**/erl_crash.dump
+*.beam
+/lab/artifacts/*
+!/lab/artifacts/.gitkeep
+.agents
+.idea
+.vscode
+# Local container deployment state and credentials.
+/.env
+
+# The complete OTP target system is seeded into this host directory on first
+# start. Keep only operator-managed release inputs and the live-ebin placeholder
+# in Git; bundled ERTS, OTP libraries, boot files and release packages are
+# generated artifacts.
+/stp/deploy/system/*
+!/stp/deploy/system/lib/
+!/stp/deploy/system/releases/
+/stp/deploy/system/lib/*
+!/stp/deploy/system/lib/telco_stp-*/
+/stp/deploy/system/lib/telco_stp-*/ebin/*
+!/stp/deploy/system/lib/telco_stp-*/ebin/.gitkeep
+/stp/deploy/system/releases/*
+!/stp/deploy/system/releases/*/
+/stp/deploy/system/releases/*/*
+!/stp/deploy/system/releases/*/sys.config
+!/stp/deploy/system/releases/*/vm.args
+
+/stp/deploy/db/*
+!/stp/deploy/db/.gitkeep
+/stp/deploy/logs/*
+!/stp/deploy/logs/.gitkeep
+/stp/deploy/crash_dumps/*
+!/stp/deploy/crash_dumps/.gitkeep
+/stp/deploy/pipe/*
+!/stp/deploy/pipe/.gitkeep
+/stp/deploy/secrets/*
+!/stp/deploy/secrets/.gitkeep
+
+log_code.txt
