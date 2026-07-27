@@ -2,6 +2,14 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-import(telco_stp_test_support, [
+    add_loopback/2,
+    await_link_state/3,
+    await_process_exit/2,
+    receive_data/2,
+    sample_transfer/2
+]).
+
 stp_integration_test_() ->
     {setup,
      fun setup/0,
@@ -74,7 +82,7 @@ asp_server_state_machine() ->
         role => sg,
         auto_activate => false
     }),
-    await_state(managed_asp, down, 50),
+    await_link_state(managed_asp, down, 50),
     {ok, AspUp} = telco_stp_m3ua:encode(#{
         class => aspsm, type => asp_up
     }),
@@ -86,7 +94,7 @@ asp_server_state_machine() ->
     after 1000 ->
         error(asp_up_ack_timeout)
     end,
-    await_state(managed_asp, inactive, 50),
+    await_link_state(managed_asp, inactive, 50),
     {ok, AspActive} = telco_stp_m3ua:encode(#{
         class => asptm,
         type => asp_active,
@@ -100,7 +108,7 @@ asp_server_state_machine() ->
     after 1000 ->
         error(asp_active_ack_timeout)
     end,
-    await_state(managed_asp, active, 50).
+    await_link_state(managed_asp, active, 50).
 
 supervised_link_restart() ->
     {ok, Pid} = telco_stp:add_link(#{
@@ -110,10 +118,10 @@ supervised_link_restart() ->
         peer => self(),
         auto_activate => true
     }),
-    await_state(restartable_link, active, 50),
+    await_link_state(restartable_link, active, 50),
     exit(Pid, kill),
     await_process_exit(Pid, 50),
-    await_state(restartable_link, active, 100).
+    await_link_state(restartable_link, active, 100).
 
 load_generator_smoke() ->
     {ok, _Pid} = telco_stp:add_link(#{
@@ -122,7 +130,7 @@ load_generator_smoke() ->
         transport => telco_stp_transport_loopback,
         auto_activate => true
     }),
-    await_state(load_link, active, 50),
+    await_link_state(load_link, active, 50),
     ok = telco_stp:add_route(#{
         id => load_route,
         dpc => 6262,
@@ -155,60 +163,3 @@ deterministic_fault_drop() ->
     end,
     ok = telco_stp:set_fault_profile(#{}).
 
-add_loopback(Name, Linkset) ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => Name,
-        linkset => Linkset,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        auto_activate => true
-    }),
-    await_state(Name, active, 50).
-
-sample_transfer(Dpc, Payload) ->
-    #{
-        opc => 100,
-        dpc => Dpc,
-        si => 3,
-        ni => 2,
-        mp => 0,
-        sls => 7,
-        payload => Payload
-    }.
-
-receive_data(Link, ExpectedPayload) ->
-    receive
-        {m3ua, Link, Binary} ->
-            {ok, Message} = telco_stp_m3ua:decode(Binary),
-            Params = maps:get(params, Message),
-            ProtocolData = maps:get(protocol_data, Params),
-            ?assertEqual(ExpectedPayload, maps:get(payload, ProtocolData))
-    after 1000 ->
-        error({m3ua_receive_timeout, Link})
-    end.
-
-await_state(Name, Expected, Attempts) when Attempts > 0 ->
-    case [
-        maps:get(state, Link)
-        || Link <- telco_stp:links(),
-           maps:get(name, Link) =:= Name
-    ] of
-        [Expected] ->
-            ok;
-        _ ->
-            receive after 10 -> ok end,
-            await_state(Name, Expected, Attempts - 1)
-    end;
-await_state(Name, Expected, 0) ->
-    error({link_state_timeout, Name, Expected, telco_stp:links()}).
-
-await_process_exit(Pid, Attempts) when Attempts > 0 ->
-    case is_process_alive(Pid) of
-        false ->
-            ok;
-        true ->
-            receive after 10 -> ok end,
-            await_process_exit(Pid, Attempts - 1)
-    end;
-await_process_exit(Pid, 0) ->
-    error({process_exit_timeout, Pid}).

@@ -2,6 +2,16 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-import(telco_stp_test_support, [
+    add_loopback/3,
+    add_loopback/4,
+    await_link_state/3,
+    receive_m2pa_binary/1,
+    receive_m3ua_message/1,
+    receive_protocol_data/1,
+    sample_transfer/2
+]).
+
 advanced_stp_test_() ->
     {foreach,
      fun setup/0,
@@ -1054,29 +1064,6 @@ configuration_replace_restores_runtime() ->
     )),
     ok = file:delete(Path).
 
-add_loopback(Name, Linkset, Peer) ->
-    add_loopback(Name, Linkset, Peer, true).
-
-add_loopback(Name, Linkset, Peer, AutoActivate) ->
-    Base = #{
-        name => Name,
-        linkset => Linkset,
-        transport => telco_stp_transport_loopback,
-        auto_activate => AutoActivate
-    },
-    Config =
-        case Peer of
-            undefined -> Base;
-            _ -> Base#{peer => Peer}
-        end,
-    {ok, _Pid} = telco_stp:add_link(Config),
-    Expected =
-        case AutoActivate of
-            true -> active;
-            false -> down
-        end,
-    await_link_state(Name, Expected, 100).
-
 inject_ssnm(Link, Type, Params) ->
     {ok, Binary} = telco_stp_m3ua:encode(#{
         class => ssnm, type => Type, params => Params
@@ -1088,17 +1075,6 @@ inject_control(Link, Class, Type, Params) ->
         class => Class, type => Type, params => Params
     }),
     ok = telco_stp:inject_m3ua(Link, Binary).
-
-sample_transfer(Dpc, Payload) ->
-    #{
-        opc => 100,
-        dpc => Dpc,
-        si => 3,
-        ni => 2,
-        mp => 0,
-        sls => 7,
-        payload => Payload
-    }.
 
 gt_address(Digits) ->
     #{
@@ -1183,32 +1159,6 @@ inject_scmg(Link, Type, AffectedPc, AffectedSsn, LocalPc) ->
     ),
     ok = telco_stp:inject_m3ua(Link, M3ua).
 
-receive_protocol_data(Link) ->
-    receive
-        {m3ua, Link, Binary} ->
-            {ok, Message} = telco_stp_m3ua:decode(Binary),
-            maps:get(protocol_data, maps:get(params, Message))
-    after 1000 ->
-        error({m3ua_receive_timeout, Link})
-    end.
-
-receive_m3ua_message(Link) ->
-    receive
-        {m3ua, Link, Binary} ->
-            {ok, Message} = telco_stp_m3ua:decode(Binary),
-            Message
-    after 1000 ->
-        error({m3ua_receive_timeout, Link})
-    end.
-
-receive_m2pa_binary(Link) ->
-    receive
-        {m2pa, Link, Stream, Binary} ->
-            {Stream, Binary}
-    after 1000 ->
-        error({m2pa_receive_timeout, Link})
-    end.
-
 inject_m2pa_status(Link, Status, Stream) ->
     {ok, Binary} = telco_stp_m2pa:encode(#{
         type => link_status,
@@ -1285,21 +1235,6 @@ collect_ssnm(Link, Count, Acc) ->
     after 1000 ->
         error({ssnm_receive_timeout, Link, Count})
     end.
-
-await_link_state(Name, Expected, Attempts) when Attempts > 0 ->
-    case [
-        maps:get(state, Link)
-        || Link <- telco_stp:links(),
-           maps:get(name, Link) =:= Name
-    ] of
-        [Expected] ->
-            ok;
-        _ ->
-            receive after 10 -> ok end,
-            await_link_state(Name, Expected, Attempts - 1)
-    end;
-await_link_state(Name, Expected, 0) ->
-    error({link_state_timeout, Name, Expected, telco_stp:links()}).
 
 await_notification(Name, Meaning, Attempts) when Attempts > 0 ->
     case [
