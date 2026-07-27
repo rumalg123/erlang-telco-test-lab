@@ -13,6 +13,7 @@ ARG STP_RELEASE_VERSION
 WORKDIR /build/stp
 
 COPY src/ ./src/
+COPY include/ ./include/
 COPY test/ ./test/
 COPY release/ ./release/
 COPY deploy/system/releases/ ./deploy/system/releases/
@@ -21,11 +22,13 @@ RUN set -eux; \
     grep -F "{vsn, \"${STP_VERSION}\"}" src/telco_stp.app.src; \
     mkdir -p /build/output/ebin /build/output/test; \
     erlc +debug_info -Werror \
+        -I include \
         -o /build/output/ebin \
         src/telco_stp_transport.erl; \
     for source in src/*.erl; do \
         if [ "${source}" != "src/telco_stp_transport.erl" ]; then \
             erlc +debug_info -Werror \
+                -I include \
                 -pa /build/output/ebin \
                 -o /build/output/ebin \
                 "${source}"; \
@@ -37,6 +40,7 @@ RUN set -eux; \
         /build/output/ebin/telco_stp.appup; \
     for test_source in test/*.erl; do \
         erlc +debug_info -Werror \
+            -I include \
             -pa /build/output/ebin \
             -o /build/output/test \
             "${test_source}"; \
