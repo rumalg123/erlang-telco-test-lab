@@ -952,7 +952,9 @@ start_m2pa_proving(Data) ->
         undefined ->
             Token = make_ref(),
             Config = maps:get(config, Data),
-            ProvingMs = maps:get(m2pa_proving_ms, Config, 500),
+            ProvingMs = maps:get(
+                m2pa_proving_ms, Config, ?STP_DEFAULT_M2PA_PROVING_MS
+            ),
             _ = erlang:send_after(
                 ProvingMs, self(), {m2pa_proving_complete, Token}
             ),

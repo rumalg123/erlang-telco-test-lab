@@ -204,7 +204,11 @@ handle_info({restart_link, Name}, #{links := Links} = State) ->
                         monitor => Ref
                     }}}};
                 {error, _Reason} ->
-                    _ = erlang:send_after(500, self(), {restart_link, Name}),
+                    _ = erlang:send_after(
+                        ?STP_LINK_RESTART_RETRY_MS,
+                        self(),
+                        {restart_link, Name}
+                    ),
                     {noreply, State}
             end;
         _ ->
