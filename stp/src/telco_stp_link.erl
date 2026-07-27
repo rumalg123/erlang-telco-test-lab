@@ -1211,20 +1211,34 @@ handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
         opc => maps:get(opc, Transfer),
         dpc => maps:get(dpc, Transfer)
     },
+    {Retrieved, RetrievedData} = retrieve_for_changeover(Snmm, Data),
     Ack = changeover_acknowledgement(Snmm),
-    case send_m2pa_snmm(Ack, Transfer, Data) of
+    case send_m2pa_snmm(Ack, Transfer, RetrievedData) of
         {ok, SentData} ->
             SentM2pa = maps:get(m2pa, SentData),
+            RerouteResults = reroute_retrieved_changeover(
+                maps:get(name, Data), Retrieved
+            ),
             NetworkManagement = NetworkManagement0#{
-                last_changeover => Event,
+                changeover_state => changeover_state(Type),
+                last_changeover => Event#{
+                    retrieved => length(Retrieved),
+                    retrieved_fsns => [
+                        maps:get(fsn, Item) || Item <- Retrieved
+                    ],
+                    reroute_results => RerouteResults
+                },
                 last_changeover_ack_sent => Ack#{
                     sent_at => erlang:monotonic_time(millisecond)
                 }
             },
             telco_stp_metrics:increment({snmm, Type}),
+            telco_stp_metrics:add(
+                {snmm, changeover_retrieved}, length(Retrieved)
+            ),
             {ok, SentData#{m2pa => SentM2pa#{
                 network_management => NetworkManagement
-            }}};
+            }, congestion => changeover_congestion(Type)}};
         {error, Reason, FailedData} ->
             telco_stp_metrics:increment({snmm, changeover_ack_failed}),
             raise_link_alarm(
@@ -1233,6 +1247,55 @@ handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
             ),
             {error, FailedData#{last_error => {snmm_ack_failed, Reason}}}
     end.
+
+retrieve_for_changeover(#{type := cbd}, Data) ->
+    {[], Data};
+retrieve_for_changeover(#{fsn := Fsn}, Data) ->
+    M2pa = maps:get(m2pa, Data),
+    AcknowledgedData = Data#{m2pa => acknowledge_m2pa(Fsn, M2pa)},
+    case retrieve_m2pa_messages(Fsn, AcknowledgedData) of
+        {ok, Messages, NewData} ->
+            {Messages, NewData};
+        {error, Reason} ->
+            CurrentM2pa = maps:get(m2pa, AcknowledgedData),
+            NetworkManagement = maps:get(
+                network_management, CurrentM2pa, #{}
+            ),
+            {[], AcknowledgedData#{m2pa => CurrentM2pa#{
+                network_management => NetworkManagement#{
+                    last_changeover_retrieval_error => Reason
+                }
+            }}}
+    end.
+
+reroute_retrieved_changeover(SourceLink, Retrieved) ->
+    [
+        reroute_retrieved_message(SourceLink, Item)
+        || Item <- Retrieved
+    ].
+
+reroute_retrieved_message(SourceLink, #{fsn := Fsn, transfer := Transfer}) ->
+    Result = telco_stp_dispatcher:reroute(SourceLink, Transfer),
+    case Result of
+        {ok, #{link := Link} = Details} ->
+            telco_stp_metrics:increment({snmm, changeover_rerouted}),
+            #{fsn => Fsn, result => ok, link => Link, details => Details};
+        {error, Reason} ->
+            telco_stp_metrics:increment(
+                {snmm, changeover_reroute_failed}
+            ),
+            #{fsn => Fsn, result => {error, Reason}}
+    end.
+
+changeover_state(cbd) ->
+    normal;
+changeover_state(_Type) ->
+    changeover.
+
+changeover_congestion(cbd) ->
+    0;
+changeover_congestion(_Type) ->
+    3.
 
 changeover_acknowledgement(#{type := coo, fsn := Fsn}) ->
     #{type => coa, fsn => Fsn};

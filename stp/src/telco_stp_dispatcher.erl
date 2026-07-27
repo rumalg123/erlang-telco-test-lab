@@ -7,6 +7,7 @@
     start_link/0,
     transfer/1,
     ingress/2,
+    reroute/2,
     set_fault_profile/1,
     fault_profile/0,
     set_overload_limits/1,
@@ -31,6 +32,12 @@ transfer(Message) ->
 
 ingress(SourceLink, Message) ->
     gen_server:cast(?MODULE, {ingress, SourceLink, Message}).
+
+reroute(SourceLink, Message) ->
+    gen_server:call(
+        ?MODULE, {reroute, SourceLink, Message},
+        ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
+    ).
 
 set_fault_profile(Profile) ->
     gen_server:call(?MODULE, {set_fault_profile, Profile}).
@@ -75,6 +82,14 @@ handle_call({transfer, Message}, _From, State) ->
             {reply, {error, stp_overloaded}, OverloadedState};
         {accept, AvailableState} ->
             process_transfer(Message, AvailableState)
+    end;
+handle_call({reroute, SourceLink, Message}, _From, State) ->
+    case overload_decision(State) of
+        {shed, OverloadedState} ->
+            telco_stp_metrics:increment({traffic, overload_reroute_shed}),
+            {reply, {error, stp_overloaded}, OverloadedState};
+        {accept, AvailableState} ->
+            process_reroute(SourceLink, Message, AvailableState)
     end;
 handle_call({set_overload_limits, Limits0}, _From, State) ->
     case normalize_overload_limits(Limits0) of
@@ -138,6 +153,18 @@ process_transfer(Message, State) ->
             end;
         Error ->
             telco_stp_metrics:increment({traffic, invalid}),
+            {reply, Error, State}
+    end.
+
+process_reroute(SourceLink, Message, State) ->
+    telco_stp_metrics:increment({traffic, reroute_submitted}),
+    case validate_message(Message) of
+        ok ->
+            {Reply, NewState} =
+                dispatch_with_faults(Message, [SourceLink], State),
+            {reply, Reply, NewState};
+        Error ->
+            telco_stp_metrics:increment({traffic, invalid_reroute}),
             {reply, Error, State}
     end.
 

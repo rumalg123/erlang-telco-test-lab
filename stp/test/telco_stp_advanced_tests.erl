@@ -31,6 +31,7 @@ advanced_stp_test_() ->
         fun m2pa_alignment_sequence_ack_and_retrieval/0,
         fun m2pa_snmm_transfer_management_controls_routes/0,
         fun m2pa_changeover_changeback_acknowledgements/0,
+        fun m2pa_changeover_retrieves_and_reroutes_unacked_msus/0,
         fun itu_signalling_link_test_is_acknowledged_on_source_link/0,
         fun authenticated_rbac_management_is_hash_chained/0,
         fun durable_audit_chain_resumes_after_restart/0,
@@ -704,6 +705,68 @@ m2pa_changeover_changeback_acknowledgements() ->
     ?assertMatch(
         #{type := cba, changeback_code := 16#44},
         maps:get(last_changeover_ack_sent, NetworkManagement)
+    ).
+
+m2pa_changeover_retrieves_and_reroutes_unacked_msus() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => chm_primary,
+        linkset => chm_primary_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(chm_primary),
+    add_loopback(chm_secondary, chm_secondary_set, self()),
+    ok = telco_stp:add_route(#{
+        id => chm_retrieval_route,
+        dpc => 7200,
+        mask => 16#ffffff,
+        linksets => [chm_primary_set, chm_secondary_set]
+    }),
+    ?assertMatch(
+        {ok, #{link := chm_primary}},
+        telco_stp:transfer(sample_transfer(7200, <<"CO-FIRST">>))
+    ),
+    {1, FirstBinary} = receive_m2pa_binary(chm_primary),
+    {ok, #{type := user_data, fsn := 0}} =
+        telco_stp_m2pa:decode(FirstBinary),
+    ?assertMatch(
+        {ok, #{link := chm_primary}},
+        telco_stp:transfer(sample_transfer(7200, <<"CO-SECOND">>))
+    ),
+    {1, SecondBinary} = receive_m2pa_binary(chm_primary),
+    {ok, #{type := user_data, fsn := 1}} =
+        telco_stp_m2pa:decode(SecondBinary),
+    inject_m2pa_snmm(chm_primary, 0, #{type => xco, fsn => 0}),
+    ?assertEqual(#{type => xca, fsn => 0}, receive_m2pa_snmm(chm_primary)),
+    ?assertEqual(
+        <<"CO-SECOND">>,
+        maps:get(payload, receive_protocol_data(chm_secondary))
+    ),
+    ?assertMatch(
+        {ok, #{link := chm_secondary}},
+        telco_stp:transfer(sample_transfer(7200, <<"CO-FUTURE">>))
+    ),
+    ?assertEqual(
+        <<"CO-FUTURE">>,
+        maps:get(payload, receive_protocol_data(chm_secondary))
+    ),
+    [Link] = [
+        Item || Item <- telco_stp:links(),
+                maps:get(name, Item) =:= chm_primary
+    ],
+    M2pa = maps:get(m2pa, Link),
+    NetworkManagement = maps:get(network_management, M2pa),
+    ?assertEqual(1, maps:get(unacked, M2pa)),
+    ?assertMatch(
+        #{type := xco, retrieved := 1, retrieved_fsns := [1]},
+        maps:get(last_changeover, NetworkManagement)
+    ),
+    ?assertEqual(
+        changeover, maps:get(changeover_state, NetworkManagement)
     ).
 
 itu_signalling_link_test_is_acknowledged_on_source_link() ->
