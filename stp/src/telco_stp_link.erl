@@ -1193,11 +1193,7 @@ handle_m2pa_snmm(#{type := Type}, _Transfer, _Data) ->
 handle_m2pa_inhibit_snmm(#{type := Type} = Snmm, Transfer, Data) ->
     M2pa = maps:get(m2pa, Data),
     NetworkManagement0 = maps:get(network_management, M2pa, #{}),
-    Event = Snmm#{
-        received_at => erlang:monotonic_time(millisecond),
-        opc => maps:get(opc, Transfer),
-        dpc => maps:get(dpc, Transfer)
-    },
+    Event = snmm_event(Snmm, Transfer),
     case maybe_send_inhibit_acknowledgement(Snmm, Transfer, Data) of
         {ok, SentData, AckSent} ->
             SentM2pa = maps:get(m2pa, SentData),
@@ -1250,11 +1246,7 @@ inhibit_congestion(_Type) ->
 handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
     M2pa = maps:get(m2pa, Data),
     NetworkManagement0 = maps:get(network_management, M2pa, #{}),
-    Event = Snmm#{
-        received_at => erlang:monotonic_time(millisecond),
-        opc => maps:get(opc, Transfer),
-        dpc => maps:get(dpc, Transfer)
-    },
+    Event = snmm_event(Snmm, Transfer),
     {Retrieved, RetrievedData} = retrieve_for_changeover(Snmm, Data),
     Ack = changeover_acknowledgement(Snmm),
     case send_m2pa_snmm(Ack, Transfer, RetrievedData) of
@@ -1291,6 +1283,13 @@ handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
             ),
             {error, FailedData#{last_error => {snmm_ack_failed, Reason}}}
     end.
+
+snmm_event(Snmm, Transfer) ->
+    Snmm#{
+        received_at => erlang:monotonic_time(millisecond),
+        opc => maps:get(opc, Transfer),
+        dpc => maps:get(dpc, Transfer)
+    }.
 
 retrieve_for_changeover(#{type := cbd}, Data) ->
     {[], Data};
