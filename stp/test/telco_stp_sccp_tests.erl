@@ -95,6 +95,20 @@ xudt_options_and_hop_test() ->
     {ok, Relayed} = telco_stp_sccp:prepare_relay(Decoded),
     ?assertEqual(9, maps:get(hop_counter, Relayed)).
 
+xudt_unknown_option_roundtrip_test() ->
+    Message = #{
+        type => xudt,
+        protocol_class => 0,
+        hop_counter => 10,
+        called_party => gt_address(<<"123456">>),
+        calling_party => gt_address(<<"654321">>),
+        data => <<1, 2, 3>>,
+        options => [{16#33, <<7>>}]
+    },
+    {ok, Binary} = telco_stp_sccp:encode(Message),
+    {ok, Decoded} = telco_stp_sccp:decode(Binary),
+    ?assertEqual([{16#33, <<7>>}], maps:get(options, Decoded)).
+
 structured_segmentation_parameter_test() ->
     Segmentation = #{
         first_segment => true,

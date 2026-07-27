@@ -653,14 +653,25 @@ pointers_fit(Pointers) ->
 present_bit(<<>>) -> 0;
 present_bit(_Binary) -> 1.
 
-option_tag(segmentation) -> 16#10;
-option_tag(importance) -> 16#12;
+option_tag(Name) when is_atom(Name) ->
+    case lists:keyfind(Name, 1, option_tags()) of
+        {Name, Tag} -> Tag;
+        false -> error({unknown_sccp_option, Name})
+    end;
 option_tag(Tag) when is_integer(Tag), Tag > 0, Tag =< 255 -> Tag;
 option_tag(Name) -> error({unknown_sccp_option, Name}).
 
-option_name(16#10) -> segmentation;
-option_name(16#12) -> importance;
-option_name(Tag) -> Tag.
+option_name(Tag) ->
+    case lists:keyfind(Tag, 2, option_tags()) of
+        {Name, Tag} -> Name;
+        false -> Tag
+    end.
+
+option_tags() ->
+    [
+        {segmentation, 16#10},
+        {importance, 16#12}
+    ].
 
 encode_option(segmentation, Value) when is_map(Value) ->
     encode_segmentation_value(Value);
