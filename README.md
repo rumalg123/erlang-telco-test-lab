@@ -6,7 +6,7 @@ built, run, removed, or replaced by a production peer independently.
 
 | Directory | Component | Status |
 | --- | --- | --- |
-| `stp/` | SS7/SIGTRAN STP | Advanced test implementation; 77 OTP 29 tests |
+| `stp/` | SS7/SIGTRAN STP | Advanced test implementation; 79 OTP 29 tests |
 | `msc/` | MSC/VLR | Scaffolded; next implementation |
 | `smsc/` | SMSC | Scaffolded |
 | `hlr/` | HLR/AuC and future HSS bridge | Scaffolded |

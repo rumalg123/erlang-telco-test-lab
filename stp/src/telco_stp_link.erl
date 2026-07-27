@@ -1163,6 +1163,9 @@ handle_m2pa_mtp3_transfer(Transfer, Data) ->
 handle_m2pa_snmm(#{type := Type} = Snmm, Transfer, Data)
         when Type =:= coo; Type =:= xco; Type =:= eco; Type =:= cbd ->
     handle_m2pa_changeover_snmm(Snmm, Transfer, Data);
+handle_m2pa_snmm(#{type := Type} = Snmm, Transfer, Data)
+        when Type =:= lin; Type =:= lun; Type =:= lfu ->
+    handle_m2pa_inhibit_snmm(Snmm, Transfer, Data);
 handle_m2pa_snmm(#{type := Type} = Snmm, _Transfer, Data)
         when Type =:= coa; Type =:= xca; Type =:= eca; Type =:= cba ->
     M2pa = maps:get(m2pa, Data),
@@ -1202,6 +1205,63 @@ handle_m2pa_snmm(#{type := Type}, _Transfer, _Data)
 handle_m2pa_snmm(#{type := Type}, _Transfer, _Data) ->
     telco_stp_metrics:increment({snmm, ignored, Type}),
     ok.
+
+handle_m2pa_inhibit_snmm(#{type := Type} = Snmm, Transfer, Data) ->
+    M2pa = maps:get(m2pa, Data),
+    NetworkManagement0 = maps:get(network_management, M2pa, #{}),
+    Event = Snmm#{
+        received_at => erlang:monotonic_time(millisecond),
+        opc => maps:get(opc, Transfer),
+        dpc => maps:get(dpc, Transfer)
+    },
+    case maybe_send_inhibit_acknowledgement(Snmm, Transfer, Data) of
+        {ok, SentData, AckSent} ->
+            SentM2pa = maps:get(m2pa, SentData),
+            NetworkManagement = NetworkManagement0#{
+                link_inhibit_state => inhibit_state(Type),
+                last_link_inhibit => Event,
+                last_link_inhibit_ack_sent => AckSent
+            },
+            telco_stp_metrics:increment({snmm, Type}),
+            {ok, SentData#{m2pa => SentM2pa#{
+                network_management => NetworkManagement
+            }, congestion => inhibit_congestion(Type)}};
+        {error, Reason, FailedData} ->
+            telco_stp_metrics:increment({snmm, inhibit_ack_failed}),
+            raise_link_alarm(
+                snmm_inhibit, warning,
+                #{reason => Reason, type => Type}, Data
+            ),
+            {error, FailedData#{last_error => {snmm_ack_failed, Reason}}}
+    end.
+
+maybe_send_inhibit_acknowledgement(#{type := lfu}, _Transfer, Data) ->
+    {ok, Data, undefined};
+maybe_send_inhibit_acknowledgement(Snmm, Transfer, Data) ->
+    Ack = inhibit_acknowledgement(Snmm),
+    case send_m2pa_snmm(Ack, Transfer, Data) of
+        {ok, SentData} ->
+            {ok, SentData, Ack#{
+                sent_at => erlang:monotonic_time(millisecond)
+            }};
+        Error ->
+            Error
+    end.
+
+inhibit_acknowledgement(#{type := lin}) ->
+    #{type => lia};
+inhibit_acknowledgement(#{type := lun}) ->
+    #{type => lua}.
+
+inhibit_state(lin) ->
+    inhibited;
+inhibit_state(_Type) ->
+    normal.
+
+inhibit_congestion(lin) ->
+    3;
+inhibit_congestion(_Type) ->
+    0.
 
 handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
     M2pa = maps:get(m2pa, Data),

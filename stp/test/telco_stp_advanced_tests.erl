@@ -34,6 +34,8 @@ advanced_stp_test_() ->
         fun m2pa_changeover_retrieves_and_reroutes_unacked_msus/0,
         fun m2pa_changeback_restores_primary_traffic/0,
         fun m2pa_emergency_changeover_reroutes_all_unacked_msus/0,
+        fun m2pa_link_inhibit_uninhibit_controls_route_selection/0,
+        fun m2pa_force_uninhibit_restores_route_selection/0,
         fun itu_signalling_link_test_is_acknowledged_on_source_link/0,
         fun authenticated_rbac_management_is_hash_chained/0,
         fun durable_audit_chain_resumes_after_restart/0,
@@ -887,6 +889,97 @@ m2pa_emergency_changeover_reroutes_all_unacked_msus() ->
         emergency_changeover,
         maps:get(changeover_state, NetworkManagement)
     ).
+
+m2pa_link_inhibit_uninhibit_controls_route_selection() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => lim_primary,
+        linkset => lim_primary_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(lim_primary),
+    add_loopback(lim_secondary, lim_secondary_set, self()),
+    ok = telco_stp:add_route(#{
+        id => lim_route,
+        dpc => 7500,
+        mask => 16#ffffff,
+        linksets => [lim_primary_set, lim_secondary_set]
+    }),
+    inject_m2pa_snmm(lim_primary, 0, #{type => lin}),
+    ?assertEqual(#{type => lia}, receive_m2pa_snmm(lim_primary)),
+    ?assertMatch(
+        {ok, #{link := lim_secondary}},
+        telco_stp:transfer(sample_transfer(7500, <<"INHIBITED">>))
+    ),
+    ?assertEqual(
+        <<"INHIBITED">>,
+        maps:get(payload, receive_protocol_data(lim_secondary))
+    ),
+    inject_m2pa_snmm(lim_primary, 1, #{type => lun}),
+    ?assertEqual(#{type => lua}, receive_m2pa_snmm(lim_primary)),
+    ?assertMatch(
+        {ok, #{link := lim_primary}},
+        telco_stp:transfer(sample_transfer(7500, <<"UNINHIBITED">>))
+    ),
+    RestoredTransfer = receive_m2pa_transfer(lim_primary),
+    ?assertEqual(<<"UNINHIBITED">>, maps:get(payload, RestoredTransfer)),
+    [Link] = [
+        Item || Item <- telco_stp:links(),
+                maps:get(name, Item) =:= lim_primary
+    ],
+    NetworkManagement = maps:get(
+        network_management, maps:get(m2pa, Link)
+    ),
+    ?assertEqual(normal, maps:get(link_inhibit_state, NetworkManagement)).
+
+m2pa_force_uninhibit_restores_route_selection() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => lfu_primary,
+        linkset => lfu_primary_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(lfu_primary),
+    add_loopback(lfu_secondary, lfu_secondary_set, self()),
+    ok = telco_stp:add_route(#{
+        id => lfu_route,
+        dpc => 7600,
+        mask => 16#ffffff,
+        linksets => [lfu_primary_set, lfu_secondary_set]
+    }),
+    inject_m2pa_snmm(lfu_primary, 0, #{type => lin}),
+    ?assertEqual(#{type => lia}, receive_m2pa_snmm(lfu_primary)),
+    ?assertMatch(
+        {ok, #{link := lfu_secondary}},
+        telco_stp:transfer(sample_transfer(7600, <<"FORCED-AWAY">>))
+    ),
+    ?assertEqual(
+        <<"FORCED-AWAY">>,
+        maps:get(payload, receive_protocol_data(lfu_secondary))
+    ),
+    inject_m2pa_snmm(lfu_primary, 1, #{type => lfu}),
+    ?assertMatch(
+        {ok, #{link := lfu_primary}},
+        telco_stp:transfer(sample_transfer(7600, <<"FORCED-BACK">>))
+    ),
+    RestoredTransfer = receive_m2pa_transfer(lfu_primary),
+    ?assertEqual(<<"FORCED-BACK">>, maps:get(payload, RestoredTransfer)),
+    [Link] = [
+        Item || Item <- telco_stp:links(),
+                maps:get(name, Item) =:= lfu_primary
+    ],
+    NetworkManagement = maps:get(
+        network_management, maps:get(m2pa, Link)
+    ),
+    ?assertEqual(normal, maps:get(link_inhibit_state, NetworkManagement)).
 
 itu_signalling_link_test_is_acknowledged_on_source_link() ->
     add_loopback(slt_peer, slt_set, self()),

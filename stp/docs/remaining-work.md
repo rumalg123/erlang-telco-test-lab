@@ -15,15 +15,15 @@ item complete without attaching the corresponding external evidence.
 
 - Application version: `0.3.0`.
 - OTP release: 29.
-- Deterministic suite: 77 passing tests.
+- Deterministic suite: 79 passing tests.
 - Implemented core: M3UA ASP/SGP, SSNM, RKM, M2PA basic link procedures,
   ITU/ANSI MTP3 labels, ITU SLTM/SLTA response, connectionless SCCP, bounded
   reassembly, SCMG state, chained GTT, routing/failover, Q.704 SNMM codec
   and basic M2PA transfer-management route-state ingestion, changeover
   acknowledgement with retrieval/reroute of unacknowledged M2PA traffic,
   emergency changeover retrieval/reroute, tested changeback restoration to
-  normal route selection, RBAC/audit, Prometheus text, PCAPNG trace, and
-  manual warm-standby HA.
+  normal route selection, link inhibit/uninhibit route-selection handling,
+  RBAC/audit, Prometheus text, PCAPNG trace, and manual warm-standby HA.
 - Baseline command: `.\build.cmd stp -Test`.
 
 ## P0 — complete Q.704 MTP3 network management
@@ -78,7 +78,9 @@ Completed first slice:
   for subsequent traffic again;
 - ECO/ECA emergency changeover that retrieves the full unacknowledged M2PA
   user MSU buffer, reroutes it to an alternate link, and excludes the
-  emergency-changing link from future route selection.
+  emergency-changing link from future route selection;
+- LIN/LIA inhibit and LUN/LUA uninhibit route-selection handling, plus LFU
+  force-uninhibit restoration of an inhibited link.
 
 ## P0 — bounded ingress and overload control
 
@@ -296,7 +298,7 @@ Use this prompt:
 > Read `stp/docs/support-matrix.md`,
 > `stp/docs/remaining-work.md`, `stp/docs/architecture.md`, and
 > `stp/docs/operator-guide.md`. Run `.\build.cmd stp -Test` to establish the
-> 77-test OTP 29 baseline. Implement the highest-priority incomplete item I
+> 79-test OTP 29 baseline. Implement the highest-priority incomplete item I
 > name, preserve existing component boundaries, add deterministic malformed
 > and state-machine tests, and update the support matrix only for behavior
 > actually proven.

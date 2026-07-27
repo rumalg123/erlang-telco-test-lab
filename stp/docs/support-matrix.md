@@ -31,7 +31,7 @@ Status meanings:
 | ITU 14-bit and ANSI 24-bit MTP3 labels | Implemented/tested | Encode/decode and range checking |
 | ITU Q.707 SLTM/SLTA | Implemented/tested | Strict codec and automatic same-link SLTA response over M3UA or M2PA |
 | M2PA | Implemented/tested; interop pending | Alignment/proving/ready, streams, 24-bit FSN/BSN, immediate empty ACK, busy/outage, T7, retrieval |
-| Q.704 SNMM and full link management over M2PA | Partial | Q.704 heading codec, M2PA TFP/TFR/TFA/TFC/UPU route-state ingestion, COO/XCO/CBD/ECO acknowledgement, XCO retrieval/reroute of unacknowledged user MSUs, ECO retrieval/reroute of the full unacknowledged user-MSU buffer, and CBD/CBA restoration to normal route selection are tested; no complete inhibit/uninhibit, forced reroute, or route-set-test state machines |
+| Q.704 SNMM and full link management over M2PA | Partial | Q.704 heading codec, M2PA TFP/TFR/TFA/TFC/UPU route-state ingestion, COO/XCO/CBD/ECO acknowledgement, XCO/ECO retrieval and reroute, CBD/CBA restoration, LIN/LIA inhibit, LUN/LUA uninhibit, and LFU force-uninhibit route-selection behavior are tested; no complete forced reroute, inhibit collision/timer, or route-set-test state machines |
 | Physical MTP2/TDM | Not implemented | M2PA/SCTP is the lowest native boundary |
 
 ## SCCP, SCMG, GTT, and routing
