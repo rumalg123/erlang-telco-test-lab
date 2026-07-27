@@ -50,6 +50,32 @@ Still open for a broad production STP claim:
 8. Complete threat model, hardening, secret rotation and audit/trace retention
    review.
 
+## STP maintainability refactor roadmap
+
+These tasks cover behavior-sensitive cleanup in `telco_stp_link.erl` and the
+protocol codec tables. Each task must remain behavior-preserving, include
+focused tests when coverage is not already explicit, and be committed
+separately.
+
+1. Codec table single-sourcing:
+   replace mirrored encode/decode lookup tables with one authoritative mapping
+   per protocol area. Start with SNMM headings, then evaluate M3UA class/type
+   and SCCP option tables.
+2. M2PA transition helpers:
+   extract repeated status-send, acknowledgement-send and failure-transition
+   branches inside `telco_stp_link.erl` without changing state names, alarms or
+   error tuples.
+3. SNMM event construction:
+   share common changeover and inhibit event metadata assembly while preserving
+   current alarm, metric and congestion behavior.
+4. State-machine boundary split:
+   move only cohesive, already-tested M2PA helpers into a dedicated module after
+   transition and SNMM helper extraction has reduced coupling.
+5. Acceptance gates:
+   run `.\build.cmd stp -Test` after every step, keep `warnings_as_errors`
+   clean, and add targeted vectors before any refactor that changes codec table
+   structure or state-transition wiring.
+
 ## HLR/HSS simulator
 
 - MAP mobility, authentication, subscriber data and supplementary services;
