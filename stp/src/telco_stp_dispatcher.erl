@@ -503,8 +503,7 @@ normalize_fault_profile(Profile) when is_map(Profile) ->
     KnownKeys = maps:keys(?DEFAULT_FAULTS),
     Unknown = [Key || Key <- maps:keys(Profile), not lists:member(Key, KnownKeys)],
     case valid_percent(Drop) andalso valid_percent(Duplicate) andalso
-         is_integer(Delay) andalso Delay >= 0 andalso
-         Delay =< ?STP_DEFAULT_PROMOTION_TIMEOUT_MS andalso
+         valid_fault_delay(Delay) andalso
          Unknown =:= [] of
         true -> {ok, Merged};
         false -> {error, {invalid_fault_profile, Profile}}
@@ -514,17 +513,22 @@ normalize_fault_profile(Profile) ->
 
 chance(0, Random) ->
     {false, Random};
-chance(100, Random) ->
+chance(?STP_PERCENT_SCALE, Random) ->
     {true, Random};
 chance(Percent, Random0) ->
-    {Value, Random1} = rand:uniform_s(100, Random0),
+    {Value, Random1} = rand:uniform_s(?STP_PERCENT_SCALE, Random0),
     {Value =< Percent, Random1}.
 
 valid_percent(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value =< 100.
+    telco_stp_codec:in_range(Value, 0, ?STP_PERCENT_SCALE).
+
+valid_fault_delay(Value) ->
+    telco_stp_codec:in_range(
+        Value, 0, ?STP_DEFAULT_PROMOTION_TIMEOUT_MS
+    ).
 
 is_uint32(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value < (1 bsl 32).
+    telco_stp_codec:in_range(Value, 0, ?STP_UINT32_MAX).
 
 prepare_for_routing(
     SourceLink, #{si := 3, payload := Payload} = Message
@@ -758,8 +762,7 @@ normalize_overload_limits(#{
         Key || Key <- maps:keys(Limits),
                not lists:member(Key, [high_watermark, low_watermark])
     ],
-    case is_integer(High) andalso High >= 0 andalso
-         is_integer(Low) andalso Low >= 0 andalso Low =< High andalso
+    case valid_overload_watermarks(High, Low) andalso
          Unknown =:= [] of
         true ->
             {ok, #{high_watermark => High, low_watermark => Low}};
@@ -768,6 +771,12 @@ normalize_overload_limits(#{
     end;
 normalize_overload_limits(Limits) ->
     {error, {invalid_overload_limits, Limits}}.
+
+valid_overload_watermarks(High, Low) ->
+    valid_watermark(High) andalso valid_watermark(Low) andalso Low =< High.
+
+valid_watermark(Value) ->
+    is_integer(Value) andalso Value >= 0.
 
 overload_decision(State) ->
     QueueDepth = message_queue_depth(),
