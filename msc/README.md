@@ -9,7 +9,7 @@ inside the STP.
 
 Planned local layout:
 
-- `src/` — OTP application and call/mobility state machines;
-- `test/` — protocol vectors and end-to-end call scenarios;
-- `config/` — simulated and production STP attachment profiles.
+- `src/` - OTP application and call/mobility state machines;
+- `test/` - protocol vectors and end-to-end call scenarios;
+- `config/` - simulated and production STP attachment profiles.
 

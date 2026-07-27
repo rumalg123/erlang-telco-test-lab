@@ -1,6 +1,6 @@
 # Full lab roadmap and acceptance gates
 
-## STP checkpoint — 2026-07-26
+## STP checkpoint - 2026-07-27
 
 The OTP 29 STP now implements:
 
@@ -21,7 +21,7 @@ The OTP 29 STP now implements:
 - acknowledged HMAC warm-standby snapshots, persistence and explicit fenced
   promotion.
 
-The deterministic OTP 29 suite contains 79 passing tests. The authoritative
+The deterministic OTP 29 suite contains 91 passing tests. The authoritative
 scope and evidence boundary is `stp/docs/support-matrix.md`. Actionable
 implementation tasks and acceptance criteria are in
 `stp/docs/remaining-work.md`.

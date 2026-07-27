@@ -79,7 +79,7 @@ which cover ANSI 24-bit and ITU 14-bit point codes.
 6. Try linksets in configured order.
 7. Apply override, SLS-stable weighted loadshare, or broadcast.
 8. Apply a route-provided routing context and send through the selected
-   link’s M3UA or M2PA adaptation.
+   link's M3UA or M2PA adaptation.
 
 ITU Q.707 SLTM is intercepted before transit routing and acknowledged on the
 same source link. This avoids requiring a route for link maintenance traffic.

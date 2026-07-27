@@ -25,36 +25,8 @@ deploy/
 With `STP_SYSTEM_MODE=seed`, the first container start non-destructively fills
 `deploy/system` from the complete image target at `/opt/telco_stp/system`.
 Existing `sys.config`, `vm.args`, and operator ebin files are not overwritten.
-After seeding, the host tree contains:
-
-```text
-system/
-  bin/telco_stp
-  erts-17.0.3/bin/...
-  lib/
-    kernel-11.0.3/...
-    stdlib-8.0.2/...
-    sasl-4.4/...
-    crypto-5.9.1/...
-    telco_stp-0.3.0/ebin/...
-  releases/
-    RELEASES
-    start_erl.data
-    telco_stp-1.0.tar.gz
-    1.0/
-      telco_stp.rel
-      start.boot
-      start.script
-      start_clean.boot
-      start_clean.script
-      sys.config
-      vm.args
-      BUILD_INFO
-```
-
-The exact bundled OTP application versions follow the pinned OTP 29 image.
-`1.0` is the target-system release version; `0.3.0` is the `telco_stp`
-application version.
+The exact generated release layout is documented in the
+[Linux deployment guide](../docs/linux-docker-deployment.md).
 
 The generated ERTS, OTP libraries, boot artifacts and package files are
 ignored by Git because they are platform-specific build/deployment state.

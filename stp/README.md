@@ -5,7 +5,7 @@ replacement, failover, routing, GTT and negative testing.
 
 It supports the features asked about explicitly:
 
-- **GT and TT-based routing:** GTI 1–4, translation type, numbering plan,
+- **GT and TT-based routing:** GTI 1-4, translation type, numbering plan,
   nature of address, digits, SSN, routing indicator, point code and
   national-use matching.
 - **GT/TT transformation:** chained rules can rewrite digits and change TT,
@@ -33,22 +33,18 @@ From the repository root:
 ```
 
 The build locates `C:\Program Files\Erlang OTP`, requires OTP release 29,
-compiles with warnings as errors, and currently runs 79 deterministic tests.
+compiles with warnings as errors, and currently runs 91 deterministic tests.
 Real SCTP interop must run on Linux or another target host with kernel SCTP;
 the Windows suite uses deterministic loopback transport.
 
 ## Linux container deployment
 
 Native Linux with kernel SCTP is the recommended deployment platform. The
-repository includes an OTP 29 multi-stage
-[`Dockerfile`](Dockerfile), a root
-[`compose.yaml`](../compose.yaml), a fully host-mounted OTP target system, and
-`run_erl`/`to_erl` console access. The build uses OTP `systools` to create a
-genuine embedded release with bundled ERTS, `.rel`, boot scripts, `RELEASES`,
-`start_erl.data`, a release package and versioned libraries. Its
-operator-visible paths include
-`/lab/stp/system/releases/1.0/sys.config` and
-`/lab/stp/system/lib/telco_stp-0.3.0/ebin`.
+repository includes an OTP 29 multi-stage [`Dockerfile`](Dockerfile), root
+[`compose.yaml`](../compose.yaml), a host-mounted OTP target system, and
+`run_erl`/`to_erl` console access. The container build compiles with warnings
+as errors, runs the deterministic test suite, and creates an embedded release
+with OTP `systools`.
 
 On Linux with OTP 29, a complete non-container target can also be built with:
 
@@ -253,22 +249,31 @@ default. Default routes should not remain enabled in an operator topology.
 
 ```text
 src/
+  telco_stp.erl                  public trusted-local API
   telco_stp_link.erl             per-link M3UA/M2PA state
   telco_stp_m3ua.erl             RFC 4666 codec
   telco_stp_m2pa.erl             RFC 4165 codec
+  telco_stp_snmm.erl             Q.704 SNMM codec
   telco_stp_mtp3.erl             ITU/ANSI labels
   telco_stp_slt.erl              Q.707 SLTM/SLTA
   telco_stp_sccp.erl             SCCP connectionless codec
   telco_stp_scmg.erl             subsystem management state
   telco_stp_reassembly.erl       bounded SCCP reassembly
   telco_stp_gtt.erl              chained GTT and screening
+  telco_stp_match.erl            reusable route/profile matching
   telco_stp_rkm.erl              M3UA routing-key management
   telco_stp_route_table.erl      routing and path constraints
   telco_stp_dispatcher.erl       relay, overload and faults
   telco_stp_mgmt.erl             token/RBAC boundary
   telco_stp_audit.erl            durable hash-chain audit
+  telco_stp_alarm.erl            bounded alarm lifecycle
+  telco_stp_observability.erl    health and Prometheus output
   telco_stp_ha.erl               signed warm-standby snapshots
   telco_stp_trace.erl            bounded raw trace/PCAPNG
+  telco_stp_file.erl             shared file replacement helpers
+  telco_stp_term.erl             deterministic term serialization
+  telco_stp_codec.erl            shared codec helpers
+  telco_stp_path.erl             shared path validation
 ```
 
 ## Open production gates

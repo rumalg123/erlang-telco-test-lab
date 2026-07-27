@@ -40,12 +40,12 @@ the container to reread the entire file.
 | `listeners` | list, `[]` | Inbound one-to-many SCTP listeners and their allowed peer profiles |
 | `routes` | list, `[]` | Static MTP routing table |
 | `gtt_rules` | list, `[]` | SCCP global-title matching, screening and transformation rules |
-| `gtt_max_chain_depth` | integer, `8` | Maximum number of continued GTT rules; valid range 1–64 |
+| `gtt_max_chain_depth` | integer, `8` | Maximum number of continued GTT rules; valid range 1-64 |
 | `sccp_reassembly_limits` | map | Global bounds for opt-in SCCP segmentation reassembly |
 | `rkm_policy` | map | Global M3UA Routing Key Management allocation bounds/default policy |
 | `alarm_history_limit` | integer, `1000` | Maximum retained alarm lifecycle events |
 | `active_alarm_limit` | integer, `1000` | Maximum simultaneously retained active alarms |
-| `audit_history_limit` | integer, `10000` | Maximum in-memory audit records; valid range 1–1,000,000 |
+| `audit_history_limit` | integer, `10000` | Maximum in-memory audit records; valid range 1-1,000,000 |
 | `audit_log_path` | path or `undefined` | Optional append+sync durable audit log |
 | `management_credentials` | list, `[]` | Token-digest identities and roles; empty disables authenticated management |
 | `trace` | map | Raw signaling capture configuration |
@@ -83,7 +83,7 @@ Minimum link:
 | `transport` | module, default loopback | `telco_stp_transport_sctp` for outbound SCTP; loopback for deterministic testing |
 | `admin` | `up` or `down`, default `up` | Initial administrative state |
 | `auto_activate` | boolean, default `false` | Test shortcut that enters ACTIVE after transport connection; avoid for real M3UA peers |
-| `weight` | integer 1–100, default `1` | Relative loadshare weight |
+| `weight` | integer 1-100, default `1` | Relative loadshare weight |
 | `point_code_variant` | `itu` or `ansi` | ITU 14-bit or ANSI 24-bit MTP3 label profile |
 | `sccp_variant` | `itu` or `ansi`, default `itu` | SCCP address/codec profile |
 | `sccp_reassembly` | boolean, default `false` | Enables bounded SCCP segmentation reassembly for traffic from this link |
@@ -122,9 +122,9 @@ Do not configure both `remote_host` and `remote_hosts`.
 | `heartbeat_timeout_ms` | integer, default `10000` | Correlated heartbeat acknowledgement timeout |
 | `heartbeat_failure_action` | `inactive` or `reconnect` | Action after a heartbeat timeout |
 | `rkm_route_priority` | integer, default `10` | Priority assigned to routes installed by RKM |
-| `rkm_network_indicator` | `any` or 0–3 | NI assigned to dynamically installed RKM routes |
-| `network_indicator` | 0–3, default `2` | NI used when this link evaluates destination-audit state |
-| `audit_service_indicator` | 0–15, default `3` | SI used when evaluating a DAUD response |
+| `rkm_network_indicator` | `any` or 0-3 | NI assigned to dynamically installed RKM routes |
+| `network_indicator` | 0-3, default `2` | NI used when this link evaluates destination-audit state |
+| `audit_service_indicator` | 0-15, default `3` | SI used when evaluating a DAUD response |
 | `rkm` | map or absent | Per-peer RKM authorization policy; RKM is disabled when absent |
 
 Per-link RKM policy:
@@ -179,7 +179,7 @@ RKM and M3UA heartbeat fields do not apply to M2PA.
 | `m2pa_alignment_timeout_ms` | positive integer, default `60000` | Maximum alignment/proving time |
 | `m2pa_t7_ms` | positive integer, default `10000` | Excessive acknowledgement-delay timer |
 | `m2pa_max_unacked` | positive integer, default `10000` | Maximum retained unacknowledged user-data messages |
-| `m2pa_proving_filler_bytes` | 0–65535, default `0` | Optional proving-status filler length |
+| `m2pa_proving_filler_bytes` | 0-65535, default `0` | Optional proving-status filler length |
 
 The current M2PA boundary does not implement complete Q.704
 changeover/changeback/inhibit procedures. See the support matrix before using
@@ -266,8 +266,8 @@ Example:
 | `dpc` | required uint24 | Destination point-code pattern |
 | `mask` | uint24, default `16#ffffff` | Significant-bit mask; `16#3fff` exact ITU, `16#ffffff` exact ANSI, `0` default |
 | `opc_patterns` | `any` or list of `{Mask, PC}` | Optional origin point-code screening |
-| `ni` | `any`, value, or non-empty list | Network Indicator match, values 0–3 |
-| `si` | `any`, value, or non-empty list | Service Indicator match, values 0–15 |
+| `ni` | `any`, value, or non-empty list | Network Indicator match, values 0-3 |
+| `si` | `any`, value, or non-empty list | Service Indicator match, values 0-15 |
 | `network_appearance` | `any`, value, or list | M3UA Network Appearance selector |
 | `routing_context` | uint32 or `undefined` | Routing Context placed on the selected outbound M3UA DATA |
 | `priority` | non-negative integer, default `100` | Lower wins among equally specific masks |
@@ -319,12 +319,12 @@ Rule fields:
 `match` supports:
 
 - `prefix`, `exact_digits`, `min_length`, `max_length`;
-- `translation_type` 0–255;
-- `numbering_plan` 0–15;
-- `nature_of_address` 0–127;
-- `ssn` 0–255;
+- `translation_type` 0-255;
+- `numbering_plan` 0-15;
+- `nature_of_address` 0-127;
+- `ssn` 0-255;
 - `routing_indicator` as `gt` or `ssn`;
-- `point_code` 0–`16#ffffff`;
+- `point_code` 0-`16#ffffff`;
 - `national_use` boolean.
 
 Numeric/address selectors can be `any`. `set` supports:
@@ -448,9 +448,9 @@ thresholds, not a hard Erlang-mailbox bound.
 
 | Field | Default/range | Meaning |
 |---|---|---|
-| `drop_percent` | `0`, range 0–100 | Randomly drop submitted traffic |
-| `duplicate_percent` | `0`, range 0–100 | Randomly send a second copy |
-| `delay_ms` | `0`, range 0–60000 | Delay dispatch |
+| `drop_percent` | `0`, range 0-100 | Randomly drop submitted traffic |
+| `duplicate_percent` | `0`, range 0-100 | Randomly send a second copy |
+| `delay_ms` | `0`, range 0-60000 | Delay dispatch |
 
 Use only for controlled tests. Set all three to zero for normal operation.
 

@@ -15,7 +15,7 @@ item complete without attaching the corresponding external evidence.
 
 - Application version: `0.3.0`.
 - OTP release: 29.
-- Deterministic suite: 79 passing tests.
+- Deterministic suite: 91 passing tests.
 - Implemented core: M3UA ASP/SGP, SSNM, RKM, M2PA basic link procedures,
   ITU/ANSI MTP3 labels, ITU SLTM/SLTA response, connectionless SCCP, bounded
   reassembly, SCMG state, chained GTT, routing/failover, Q.704 SNMM codec
@@ -26,7 +26,7 @@ item complete without attaching the corresponding external evidence.
   RBAC/audit, Prometheus text, PCAPNG trace, and manual warm-standby HA.
 - Baseline command: `.\build.cmd stp -Test`.
 
-## P0 — complete Q.704 MTP3 network management
+## P0 - Complete Q.704 MTP3 Network Management
 
 This is the largest protocol blocker for production-facing M2PA.
 
@@ -82,7 +82,7 @@ Completed first slice:
 - LIN/LIA inhibit and LUN/LUA uninhibit route-selection handling, plus LFU
   force-uninhibit restoration of an inhibited link.
 
-## P0 — bounded ingress and overload control
+## P0 - Bounded Ingress and Overload Control
 
 The current dispatcher sheds above a mailbox watermark, but the mailbox itself
 is not hard bounded.
@@ -106,7 +106,7 @@ Acceptance:
 - burst, slow-consumer and malicious-peer tests;
 - measured recovery time and loss policy.
 
-## P0 — production HA and split-brain prevention
+## P0 - Production HA and Split-Brain Prevention
 
 The current implementation is manual warm standby. It is not active/active
 consensus.
@@ -137,7 +137,7 @@ Acceptance:
 - restart from persisted replica;
 - upgrade and rollback across adjacent schema/application versions.
 
-## P1 — SCCP connection-oriented service
+## P1 - SCCP Connection-Oriented Service
 
 Implement only if target scenarios require it:
 
@@ -164,7 +164,7 @@ Acceptance:
 - bounded-resource and peer-loss cleanup tests;
 - target-vendor interop for every claimed SCCP class.
 
-## P1 — complete SCMG coordination
+## P1 - Complete SCMG Coordination
 
 Existing SSA/SSP/SST/SOR/SOG/SSC codec and route constraints are not a complete
 coordinated subsystem-management procedure.
@@ -186,7 +186,7 @@ Acceptance:
 - routing changes only for the relevant PC/SSN/Network Appearance;
 - bounded table and timer population.
 
-## P1 — complete M3UA IPSP double exchange
+## P1 - Complete M3UA IPSP Double Exchange
 
 Implement:
 
@@ -203,7 +203,7 @@ Acceptance:
 - simultaneous start, restart, timeout and malformed-control scenarios;
 - interop with target IPSP implementations.
 
-## P1 — standard northbound operations
+## P1 - Standard Northbound Operations
 
 The token/RBAC Erlang API is a local control boundary, not a standard remote
 management service.
@@ -232,7 +232,7 @@ Acceptance:
 - rate limiting and slow-client behavior;
 - API compatibility/versioning documentation.
 
-## P1 — security and secrets
+## P1 - Security and Secrets
 
 Implement or integrate:
 
@@ -250,7 +250,7 @@ Acceptance:
 - penetration test and remediation record;
 - verified least-privilege host/service configuration.
 
-## P2 — physical SS7 boundary
+## P2 - Physical SS7 Boundary
 
 Only implement when physical legacy integration is required:
 
@@ -298,7 +298,7 @@ Use this prompt:
 > Read `stp/docs/support-matrix.md`,
 > `stp/docs/remaining-work.md`, `stp/docs/architecture.md`, and
 > `stp/docs/operator-guide.md`. Run `.\build.cmd stp -Test` to establish the
-> 79-test OTP 29 baseline. Implement the highest-priority incomplete item I
+> 91-test OTP 29 baseline. Implement the highest-priority incomplete item I
 > name, preserve existing component boundaries, add deterministic malformed
 > and state-machine tests, and update the support matrix only for behavior
 > actually proven.

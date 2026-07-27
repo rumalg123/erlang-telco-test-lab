@@ -1,16 +1,16 @@
 # STP support and readiness matrix
 
-This matrix is the authoritative statement of scope. “Tested” means the
+This matrix is the authoritative statement of scope. "Tested" means the
 deterministic OTP 29 suite passed on this development host. It does not mean
 vendor interoperability, target-host capacity, or carrier certification.
 
 Status meanings:
 
-- **Implemented/tested** — covered by local automated tests.
-- **Implemented/interop pending** — implemented, but real SCTP/vendor evidence
+- **Implemented/tested** - covered by local automated tests.
+- **Implemented/interop pending** - implemented, but real SCTP/vendor evidence
   is still required.
-- **Partial** — useful within the boundary stated in the last column.
-- **Not implemented** — must not be assumed.
+- **Partial** - useful within the boundary stated in the last column.
+- **Not implemented** - must not be assumed.
 
 ## SIGTRAN, SCTP, and MTP
 
@@ -39,7 +39,7 @@ Status meanings:
 | Area | Status | Implemented boundary |
 |---|---|---|
 | SCCP UDT/UDTS/XUDT/XUDTS/LUDT/LUDTS | Implemented/tested | ITU and ANSI connectionless relay |
-| SCCP addresses and Global Title indicators | Implemented/tested | ITU/ANSI point codes; GTI 1–4; TT, NP, NAI, digits, SSN, RI, national-use |
+| SCCP addresses and Global Title indicators | Implemented/tested | ITU/ANSI point codes; GTI 1-4; TT, NP, NAI, digits, SSN, RI, national-use |
 | Hop counter and optional parameters | Implemented/tested | Relay decrement/rejection; segmentation and importance structure |
 | SCCP segmentation reassembly | Implemented/tested | Opt-in, timeout and memory/context bounded; ordered segment validation |
 | SCCP SCMG | Implemented/tested | SSA, SSP, SST, SOR, SOG, SSC codecs; route constraints and SST local-state reply |
