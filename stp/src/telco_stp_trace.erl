@@ -209,9 +209,7 @@ export_file(Path0, Packets) ->
             interface_description_block(),
             [enhanced_packet_block(Packet) || Packet <- Packets]
         ]),
-        Temporary = Path ++ ".tmp." ++ integer_to_list(
-            erlang:unique_integer([positive, monotonic])
-        ),
+        Temporary = telco_stp_file:temporary_path(Path),
         ok = file:write_file(Temporary, Binary, [binary, sync]),
         ok = replace_file(Temporary, Path),
         {ok, #{
@@ -290,16 +288,9 @@ normalize_path(Path) ->
     telco_stp_path:normalize(Path, invalid_pcapng_path).
 
 replace_file(Temporary, Path) ->
-    case file:rename(Temporary, Path) of
-        ok -> ok;
-        {error, eexist} ->
-            ok = file:delete(Path),
-            file:rename(Temporary, Path);
-        {error, eacces} ->
-            ok = file:delete(Path),
-            file:rename(Temporary, Path);
-        {error, enoent} ->
-            file:rename(Temporary, Path);
+    case telco_stp_file:replace_deleted_strict(Temporary, Path) of
+        ok ->
+            ok;
         {error, Reason} ->
             error({pcapng_rename_failed, Reason})
     end.

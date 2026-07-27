@@ -30,6 +30,7 @@
         telco_stp_config,
         telco_stp_console,
         telco_stp_dispatcher,
+        telco_stp_file,
         telco_stp_gtt,
         telco_stp_ha,
         telco_stp_link,

@@ -562,9 +562,7 @@ persist_replica(Envelope, Path0) ->
         Path = normalize_path(Path0),
         ok = filelib:ensure_dir(Path),
         Binary = telco_stp_term:compressed_binary(Envelope),
-        Temporary = Path ++ ".tmp." ++ integer_to_list(
-            erlang:unique_integer([positive, monotonic])
-        ),
+        Temporary = telco_stp_file:temporary_path(Path),
         ok = file:write_file(Temporary, Binary, [binary, sync]),
         replace_file(Temporary, Path)
     catch
@@ -572,16 +570,7 @@ persist_replica(Envelope, Path0) ->
     end.
 
 replace_file(Temporary, Path) ->
-    case file:rename(Temporary, Path) of
-        ok -> ok;
-        {error, eexist} ->
-            _ = file:delete(Path),
-            file:rename(Temporary, Path);
-        {error, eacces} ->
-            _ = file:delete(Path),
-            file:rename(Temporary, Path);
-        Error -> Error
-    end.
+    telco_stp_file:replace_deleted(Temporary, Path).
 
 normalize_path(Path) when is_binary(Path) -> binary_to_list(Path);
 normalize_path(Path) when is_list(Path), Path =/= [] -> Path.

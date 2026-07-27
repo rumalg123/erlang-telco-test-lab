@@ -42,7 +42,7 @@ save(Path0) ->
             Payload/binary
         >>,
         ok = filelib:ensure_dir(Path),
-        Temporary = temporary_path(Path),
+        Temporary = telco_stp_file:temporary_path(Path),
         ok = file:write_file(Temporary, Binary, [binary, sync]),
         case replace_file(Temporary, Path) of
             ok -> {ok, Configuration};
@@ -258,8 +258,3 @@ replace_existing_file(Temporary, Path) ->
 
 normalize_path(Path) ->
     telco_stp_path:normalize(Path, invalid_configuration_path).
-
-temporary_path(Path) ->
-    Path ++ ".tmp." ++ integer_to_list(
-        erlang:unique_integer([positive, monotonic])
-    ).
