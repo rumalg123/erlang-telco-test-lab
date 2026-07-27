@@ -1,6 +1,8 @@
 -module(telco_stp_link_sup).
 -behaviour(supervisor).
 
+-include("telco_stp.hrl").
+
 -export([start_link/0, start_link_instance/2, stop_link_instance/1]).
 -export([init/1]).
 
@@ -12,7 +14,7 @@ start_link_instance(Name, Config) ->
         id => {stp_link, Name},
         start => {telco_stp_link, start_link, [Name, Config]},
         restart => temporary,
-        shutdown => 5000,
+        shutdown => ?STP_DEFAULT_SUPERVISOR_SHUTDOWN_MS,
         type => worker,
         modules => [telco_stp_link]
     },

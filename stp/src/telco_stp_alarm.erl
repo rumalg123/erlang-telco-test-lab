@@ -41,10 +41,12 @@ init([]) ->
         history => [],
         subscribers => #{},
         history_limit => application:get_env(
-            ?STP_APP, ?STP_ENV_ALARM_HISTORY_LIMIT, 1000
+            ?STP_APP, ?STP_ENV_ALARM_HISTORY_LIMIT,
+            ?STP_DEFAULT_ALARM_LIMIT
         ),
         active_limit => application:get_env(
-            ?STP_APP, ?STP_ENV_ACTIVE_ALARM_LIMIT, 1000
+            ?STP_APP, ?STP_ENV_ACTIVE_ALARM_LIMIT,
+            ?STP_DEFAULT_ALARM_LIMIT
         )
     }}.
 

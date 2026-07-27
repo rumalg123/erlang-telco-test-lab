@@ -24,10 +24,12 @@ status(Pid) ->
     gen_statem:call(Pid, status).
 
 send(Pid, Binary) ->
-    gen_statem:call(Pid, {send, Binary}, 5000).
+    gen_statem:call(Pid, {send, Binary}, ?STP_DEFAULT_CALL_TIMEOUT_MS).
 
 send_transfer(Pid, Message) ->
-    gen_statem:call(Pid, {send_transfer, Message}, 5000).
+    gen_statem:call(
+        Pid, {send_transfer, Message}, ?STP_DEFAULT_CALL_TIMEOUT_MS
+    ).
 
 inject(Pid, Binary) ->
     inject(Pid, Binary, #{}).
@@ -36,7 +38,9 @@ inject(Pid, Binary, Metadata) ->
     gen_statem:cast(Pid, {inject, Binary, Metadata}).
 
 retrieve_m2pa(Pid, AfterFsn) ->
-    gen_statem:call(Pid, {retrieve_m2pa, AfterFsn}, 5000).
+    gen_statem:call(
+        Pid, {retrieve_m2pa, AfterFsn}, ?STP_DEFAULT_CALL_TIMEOUT_MS
+    ).
 
 set_admin(Pid, Admin) ->
     gen_statem:call(Pid, {set_admin, Admin}).
@@ -847,7 +851,8 @@ start_m2pa_alignment(Data0) ->
         {ok, SentData} ->
             Token = make_ref(),
             Timeout = maps:get(
-                m2pa_alignment_timeout_ms, Config, 60000
+                m2pa_alignment_timeout_ms, Config,
+                ?STP_DEFAULT_M2PA_ALIGNMENT_TIMEOUT_MS
             ),
             _ = erlang:send_after(
                 Timeout, self(), {m2pa_alignment_timeout, Token}
@@ -1289,7 +1294,9 @@ send_m2pa_transfer(Message, Data) ->
     Config = maps:get(config, Data),
     M2pa = maps:get(m2pa, Data),
     Unacked = maps:get(unacked, M2pa),
-    Maximum = maps:get(m2pa_max_unacked, Config, 10000),
+    Maximum = maps:get(
+        m2pa_max_unacked, Config, ?STP_DEFAULT_M2PA_MAX_UNACKED
+    ),
     case length(Unacked) >= Maximum of
         true ->
             {error, m2pa_retransmit_buffer_full, Data};
@@ -1319,7 +1326,10 @@ send_m2pa_transfer(Message, Data) ->
                                     erlang:monotonic_time(millisecond)
                             },
                             SentM2pa = maps:get(m2pa, SentData),
-                            T7 = maps:get(m2pa_t7_ms, Config, 10000),
+                            T7 = maps:get(
+                                m2pa_t7_ms, Config,
+                                ?STP_DEFAULT_M2PA_T7_MS
+                            ),
                             _ = erlang:send_after(
                                 T7, self(), {m2pa_t7, Fsn}
                             ),
@@ -1387,7 +1397,8 @@ proving_filler(Config) ->
     Length = maps:get(m2pa_proving_filler_bytes, Config, 0),
     case Length of
         0 -> <<>>;
-        Value when is_integer(Value), Value > 0, Value =< 65535 ->
+        Value when is_integer(Value), Value > 0,
+                   Value =< ?STP_MAX_SHORT_BYTES ->
             crypto:strong_rand_bytes(Value)
     end.
 
@@ -1543,7 +1554,7 @@ schedule_reconnect(#{reconnect_ref := Ref} = Data) when is_reference(Ref) ->
     {next_state, down, Data};
 schedule_reconnect(Data) ->
     Config = maps:get(config, Data),
-    Delay = maps:get(reconnect_ms, Config, 1000),
+    Delay = maps:get(reconnect_ms, Config, ?STP_DEFAULT_RECONNECT_MS),
     Ref = erlang:send_after(Delay, self(), reconnect),
     {next_state, down, Data#{reconnect_ref => Ref}}.
 
@@ -1670,7 +1681,7 @@ send_heartbeat(Data0) ->
                     Timeout = maps:get(
                         heartbeat_timeout_ms,
                         maps:get(config, Data),
-                        10000
+                        ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
                     ),
                     TimeoutRef = erlang:send_after(
                         Timeout, self(), {heartbeat_timeout, Token}
@@ -1764,7 +1775,10 @@ heartbeat_status(Data) ->
     #{
         enabled => maps:get(heartbeat_interval_ms, Config, 0) > 0,
         interval_ms => maps:get(heartbeat_interval_ms, Config, 0),
-        timeout_ms => maps:get(heartbeat_timeout_ms, Config, 10000),
+        timeout_ms => maps:get(
+            heartbeat_timeout_ms, Config,
+            ?STP_DEFAULT_HEARTBEAT_TIMEOUT_MS
+        ),
         pending => is_reference(
             maps:get(heartbeat_timeout_ref, Data, undefined)
         ),

@@ -24,7 +24,10 @@ open(Owner, Config) ->
             ],
             case gen_sctp:open(Options) of
                 {ok, Socket} ->
-                    ConnectTimeout = maps:get(connect_timeout_ms, Config, 5000),
+                    ConnectTimeout = maps:get(
+                        connect_timeout_ms, Config,
+                        ?STP_DEFAULT_CONNECT_TIMEOUT_MS
+                    ),
                     case connect(
                         Socket, Endpoint, RemotePort, ConnectTimeout
                     ) of
@@ -192,7 +195,7 @@ adaptation_ppid(m2pa) -> ?STP_M2PA_PPID.
 
 valid_ppid(_Adaptation, 0) -> true;
 valid_ppid(m3ua, ?STP_M3UA_PPID) -> true;
-valid_ppid(m3ua, 16#03000000) -> true;
+valid_ppid(m3ua, ?STP_M3UA_NETWORK_PPID) -> true;
 valid_ppid(m2pa, ?STP_M2PA_PPID) -> true;
-valid_ppid(m2pa, 16#05000000) -> true;
+valid_ppid(m2pa, ?STP_M2PA_NETWORK_PPID) -> true;
 valid_ppid(_Adaptation, _Ppid) -> false.

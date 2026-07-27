@@ -32,7 +32,10 @@ receive_snapshot_sync(SourceNode, Envelope) ->
     ).
 
 promote(FencingToken) ->
-    gen_server:call(?MODULE, {promote, FencingToken}, 60000).
+    gen_server:call(
+        ?MODULE, {promote, FencingToken},
+        ?STP_DEFAULT_PROMOTION_TIMEOUT_MS
+    ).
 
 demote() ->
     gen_server:call(?MODULE, demote).
@@ -130,11 +133,16 @@ handle_info(_Info, State) ->
 normalize_config(Config) when is_map(Config) ->
     Mode = maps:get(mode, Config, standalone),
     Peers = maps:get(peers, Config, []),
-    Interval = maps:get(interval_ms, Config, 1000),
-    MaxStaleness = maps:get(max_staleness_ms, Config, 10000),
-    MaxClockSkew = maps:get(max_clock_skew_ms, Config, 5000),
+    Interval = maps:get(interval_ms, Config, ?STP_DEFAULT_HA_INTERVAL_MS),
+    MaxStaleness = maps:get(
+        max_staleness_ms, Config, ?STP_DEFAULT_HA_MAX_STALENESS_MS
+    ),
+    MaxClockSkew = maps:get(
+        max_clock_skew_ms, Config, ?STP_DEFAULT_HA_MAX_CLOCK_SKEW_MS
+    ),
     ReplicationTimeout = maps:get(
-        replication_timeout_ms, Config, 2000
+        replication_timeout_ms, Config,
+        ?STP_DEFAULT_HA_REPLICATION_TIMEOUT_MS
     ),
     Secret = maps:get(shared_secret, Config, undefined),
     Fence = maps:get(fencing_token_sha256, Config, undefined),
@@ -144,16 +152,17 @@ normalize_config(Config) when is_map(Config) ->
     true = is_list(Peers) andalso
         lists:all(fun is_atom/1, Peers) orelse
         error({invalid_ha_peers, Peers}),
-    true = is_integer(Interval) andalso Interval >= 100 orelse
+    true = is_integer(Interval) andalso
+        Interval >= ?STP_MIN_HA_INTERVAL_MS orelse
         error({invalid_ha_interval, Interval}),
     true = is_integer(MaxStaleness) andalso MaxStaleness > 0 orelse
         error({invalid_ha_staleness, MaxStaleness}),
     true = is_integer(MaxClockSkew) andalso MaxClockSkew >= 0 andalso
-        MaxClockSkew =< 60000 orelse
+        MaxClockSkew =< ?STP_MAX_HA_CLOCK_SKEW_MS orelse
         error({invalid_ha_clock_skew, MaxClockSkew}),
     true = is_integer(ReplicationTimeout) andalso
-        ReplicationTimeout >= 100 andalso
-        ReplicationTimeout =< 60000 orelse
+        ReplicationTimeout >= ?STP_MIN_HA_REPLICATION_TIMEOUT_MS andalso
+        ReplicationTimeout =< ?STP_MAX_HA_REPLICATION_TIMEOUT_MS orelse
         error({invalid_ha_replication_timeout, ReplicationTimeout}),
     true = valid_secret(Mode, Secret) orelse
         error(invalid_ha_shared_secret),

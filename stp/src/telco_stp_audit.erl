@@ -17,7 +17,8 @@ start_link() ->
 
 record(Actor, Action, Target, Result, Details) ->
     gen_server:call(
-        ?MODULE, {record, Actor, Action, Target, Result, Details}, 5000
+        ?MODULE, {record, Actor, Action, Target, Result, Details},
+        ?STP_DEFAULT_CALL_TIMEOUT_MS
     ).
 
 events() ->
@@ -31,7 +32,8 @@ subscribe(Pid) when is_pid(Pid) ->
 
 init([]) ->
     Limit = application:get_env(
-        ?STP_APP, ?STP_ENV_AUDIT_HISTORY_LIMIT, 10000
+        ?STP_APP, ?STP_ENV_AUDIT_HISTORY_LIMIT,
+        ?STP_DEFAULT_AUDIT_HISTORY_LIMIT
     ),
     Path = application:get_env(
         ?STP_APP, ?STP_ENV_AUDIT_LOG_PATH, undefined

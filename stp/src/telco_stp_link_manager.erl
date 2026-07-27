@@ -1,6 +1,8 @@
 -module(telco_stp_link_manager).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     add/1,
@@ -231,7 +233,8 @@ validate_config(Config) when is_map(Config) ->
                 heartbeat_interval_ms, Config, 0
             ),
             HeartbeatTimeout = maps:get(
-                heartbeat_timeout_ms, Config, 10000
+                heartbeat_timeout_ms, Config,
+                ?STP_DEFAULT_HEARTBEAT_TIMEOUT_MS
             ),
             HeartbeatAction = maps:get(
                 heartbeat_failure_action, Config, inactive
@@ -249,10 +252,10 @@ validate_config(Config) when is_map(Config) ->
                  is_integer(Weight) andalso Weight > 0 andalso Weight =< 100 andalso
                  is_integer(HeartbeatInterval) andalso
                  HeartbeatInterval >= 0 andalso
-                 HeartbeatInterval =< 3600000 andalso
+                 HeartbeatInterval =< ?STP_MAX_MILLISECONDS andalso
                  is_integer(HeartbeatTimeout) andalso
                  HeartbeatTimeout > 0 andalso
-                 HeartbeatTimeout =< 3600000 andalso
+                 HeartbeatTimeout =< ?STP_MAX_MILLISECONDS andalso
                  (
                      HeartbeatAction =:= inactive orelse
                      HeartbeatAction =:= reconnect
@@ -294,18 +297,24 @@ valid_rkm_config(_Rkm) ->
 valid_adaptation_config(m3ua, _Rkm, _Config) ->
     true;
 valid_adaptation_config(m2pa, undefined, Config) ->
-    Proving = maps:get(m2pa_proving_ms, Config, 500),
-    Alignment = maps:get(
-        m2pa_alignment_timeout_ms, Config, 60000
+    Proving = maps:get(
+        m2pa_proving_ms, Config, ?STP_DEFAULT_M2PA_PROVING_MS
     ),
-    T7 = maps:get(m2pa_t7_ms, Config, 10000),
-    Maximum = maps:get(m2pa_max_unacked, Config, 10000),
+    Alignment = maps:get(
+        m2pa_alignment_timeout_ms, Config,
+        ?STP_DEFAULT_M2PA_ALIGNMENT_TIMEOUT_MS
+    ),
+    T7 = maps:get(m2pa_t7_ms, Config, ?STP_DEFAULT_M2PA_T7_MS),
+    Maximum = maps:get(
+        m2pa_max_unacked, Config, ?STP_DEFAULT_M2PA_MAX_UNACKED
+    ),
     Filler = maps:get(m2pa_proving_filler_bytes, Config, 0),
     lists:all(
         fun(Value) -> is_integer(Value) andalso Value > 0 end,
         [Proving, Alignment, T7, Maximum]
     ) andalso
-    is_integer(Filler) andalso Filler >= 0 andalso Filler =< 65535;
+    is_integer(Filler) andalso Filler >= 0 andalso
+        Filler =< ?STP_MAX_SHORT_BYTES;
 valid_adaptation_config(m2pa, _Rkm, _Config) ->
     false.
 

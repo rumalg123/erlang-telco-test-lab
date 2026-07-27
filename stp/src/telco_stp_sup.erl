@@ -1,6 +1,8 @@
 -module(telco_stp_sup).
 -behaviour(supervisor).
 
+-include("telco_stp.hrl").
+
 -export([start_link/0]).
 -export([init/1]).
 
@@ -14,46 +16,11 @@ init([]) ->
         period => 30
     },
     Children = [
-        #{
-            id => telco_stp_metrics,
-            start => {telco_stp_metrics, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_metrics]
-        },
-        #{
-            id => telco_stp_alarm,
-            start => {telco_stp_alarm, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_alarm]
-        },
-        #{
-            id => telco_stp_audit,
-            start => {telco_stp_audit, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_audit]
-        },
-        #{
-            id => telco_stp_mgmt,
-            start => {telco_stp_mgmt, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_mgmt]
-        },
-        #{
-            id => telco_stp_trace,
-            start => {telco_stp_trace, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_trace]
-        },
+        worker(telco_stp_metrics),
+        worker(telco_stp_alarm),
+        worker(telco_stp_audit),
+        worker(telco_stp_mgmt),
+        worker(telco_stp_trace),
         #{
             id => telco_stp_link_sup,
             start => {telco_stp_link_sup, start_link, []},
@@ -62,85 +29,28 @@ init([]) ->
             type => supervisor,
             modules => [telco_stp_link_sup]
         },
-        #{
-            id => telco_stp_link_manager,
-            start => {telco_stp_link_manager, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_link_manager]
-        },
-        #{
-            id => telco_stp_route_table,
-            start => {telco_stp_route_table, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_route_table]
-        },
-        #{
-            id => telco_stp_rkm,
-            start => {telco_stp_rkm, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_rkm]
-        },
-        #{
-            id => telco_stp_gtt,
-            start => {telco_stp_gtt, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_gtt]
-        },
-        #{
-            id => telco_stp_reassembly,
-            start => {telco_stp_reassembly, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_reassembly]
-        },
-        #{
-            id => telco_stp_scmg,
-            start => {telco_stp_scmg, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_scmg]
-        },
-        #{
-            id => telco_stp_listener_manager,
-            start => {telco_stp_listener_manager, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_listener_manager]
-        },
-        #{
-            id => telco_stp_dispatcher,
-            start => {telco_stp_dispatcher, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_dispatcher]
-        },
-        #{
-            id => telco_stp_ha,
-            start => {telco_stp_ha, start_link, []},
-            restart => permanent,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_ha]
-        },
-        #{
-            id => telco_stp_bootstrap,
-            start => {telco_stp_bootstrap, start_link, []},
-            restart => transient,
-            shutdown => 5000,
-            type => worker,
-            modules => [telco_stp_bootstrap]
-        }
+        worker(telco_stp_link_manager),
+        worker(telco_stp_route_table),
+        worker(telco_stp_rkm),
+        worker(telco_stp_gtt),
+        worker(telco_stp_reassembly),
+        worker(telco_stp_scmg),
+        worker(telco_stp_listener_manager),
+        worker(telco_stp_dispatcher),
+        worker(telco_stp_ha),
+        worker(telco_stp_bootstrap, transient)
     ],
     {ok, {SupFlags, Children}}.
+
+worker(Module) ->
+    worker(Module, permanent).
+
+worker(Module, Restart) ->
+    #{
+        id => Module,
+        start => {Module, start_link, []},
+        restart => Restart,
+        shutdown => ?STP_DEFAULT_SUPERVISOR_SHUTDOWN_MS,
+        type => worker,
+        modules => [Module]
+    }.

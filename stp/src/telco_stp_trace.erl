@@ -126,10 +126,16 @@ handle_info(_Info, State) ->
 normalize(Config) when is_map(Config) ->
     Normalized = #{
         enabled => maps:get(enabled, Config, false),
-        max_packets => maps:get(max_packets, Config, 10000),
-        max_bytes => maps:get(max_bytes, Config, 67108864),
+        max_packets => maps:get(
+            max_packets, Config, ?STP_DEFAULT_TRACE_MAX_PACKETS
+        ),
+        max_bytes => maps:get(
+            max_bytes, Config, ?STP_DEFAULT_TRACE_MAX_BYTES
+        ),
         capture_payload => maps:get(capture_payload, Config, true),
-        header_bytes => maps:get(header_bytes, Config, 128)
+        header_bytes => maps:get(
+            header_bytes, Config, ?STP_DEFAULT_TRACE_HEADER_BYTES
+        )
     },
     case Normalized of
         #{
@@ -152,7 +158,8 @@ normalize(Config) ->
 valid_packet(Direction, Adaptation, Stream) ->
     (Direction =:= rx orelse Direction =:= tx) andalso
     (Adaptation =:= m3ua orelse Adaptation =:= m2pa) andalso
-    is_integer(Stream) andalso Stream >= 0 andalso Stream =< 65535.
+    is_integer(Stream) andalso Stream >= 0 andalso
+    Stream =< ?STP_MAX_SHORT_BYTES.
 
 enforce_limits(State) ->
     Config = maps:get(config, State),

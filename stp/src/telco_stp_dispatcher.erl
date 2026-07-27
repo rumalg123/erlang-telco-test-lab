@@ -25,7 +25,9 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 transfer(Message) ->
-    gen_server:call(?MODULE, {transfer, Message}, 10000).
+    gen_server:call(
+        ?MODULE, {transfer, Message}, ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
+    ).
 
 ingress(SourceLink, Message) ->
     gen_server:cast(?MODULE, {ingress, SourceLink, Message}).
@@ -54,7 +56,10 @@ init([]) ->
     {ok, OverloadLimits} = normalize_overload_limits(
         application:get_env(
             ?STP_APP, ?STP_ENV_OVERLOAD_LIMITS,
-            #{high_watermark => 10000, low_watermark => 5000}
+            #{
+                high_watermark => ?STP_DEFAULT_OVERLOAD_HIGH_WATERMARK,
+                low_watermark => ?STP_DEFAULT_OVERLOAD_LOW_WATERMARK
+            }
         )
     ),
     {ok, #{
@@ -471,7 +476,8 @@ normalize_fault_profile(Profile) when is_map(Profile) ->
     KnownKeys = maps:keys(?DEFAULT_FAULTS),
     Unknown = [Key || Key <- maps:keys(Profile), not lists:member(Key, KnownKeys)],
     case valid_percent(Drop) andalso valid_percent(Duplicate) andalso
-         is_integer(Delay) andalso Delay >= 0 andalso Delay =< 60000 andalso
+         is_integer(Delay) andalso Delay >= 0 andalso
+         Delay =< ?STP_DEFAULT_PROMOTION_TIMEOUT_MS andalso
          Unknown =:= [] of
         true -> {ok, Merged};
         false -> {error, {invalid_fault_profile, Profile}}

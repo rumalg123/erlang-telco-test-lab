@@ -20,14 +20,15 @@ start_link() ->
 
 register(Link, LinkState, Config, RoutingKeys) ->
     gen_server:call(
-        ?MODULE, {register, Link, LinkState, Config, RoutingKeys}, 10000
+        ?MODULE, {register, Link, LinkState, Config, RoutingKeys},
+        ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
     ).
 
 deregister(Link, LinkState, Config, RoutingContexts) ->
     gen_server:call(
         ?MODULE,
         {deregister, Link, LinkState, Config, RoutingContexts},
-        10000
+        ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
     ).
 
 record_peer_results(Link, Type, Results) ->
@@ -137,7 +138,7 @@ handle_info(_Info, State) ->
 
 normalize_global_policy(Policy) when is_map(Policy) ->
     Max = maps:get(max_registrations, Policy, 4096),
-    RcStart = maps:get(rc_start, Policy, 10000),
+    RcStart = maps:get(rc_start, Policy, ?STP_DEFAULT_RKM_RC_START),
     RcEnd = maps:get(rc_end, Policy, ?STP_UINT32_MAX),
     true = is_integer(Max) andalso Max > 0 andalso Max =< 1000000 orelse
         error({invalid_rkm_max_registrations, Max}),

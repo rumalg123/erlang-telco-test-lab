@@ -13,7 +13,7 @@ process(SourceLink, MtpMessage, SccpMessage) ->
     gen_server:call(
         ?MODULE,
         {process, SourceLink, MtpMessage, SccpMessage},
-        10000
+        ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
     ).
 
 status() ->
@@ -30,18 +30,31 @@ init([]) ->
         contexts => #{},
         total_bytes => 0,
         max_contexts => positive(
-            maps:get(max_contexts, Limits, 10000), max_contexts
+            maps:get(
+                max_contexts, Limits,
+                ?STP_DEFAULT_REASSEMBLY_MAX_CONTEXTS
+            ),
+            max_contexts
         ),
         max_context_bytes => positive(
-            maps:get(max_context_bytes, Limits, 65536),
+            maps:get(
+                max_context_bytes, Limits,
+                ?STP_DEFAULT_REASSEMBLY_CONTEXT_BYTES
+            ),
             max_context_bytes
         ),
         max_total_bytes => positive(
-            maps:get(max_total_bytes, Limits, 67108864),
+            maps:get(
+                max_total_bytes, Limits,
+                ?STP_DEFAULT_REASSEMBLY_TOTAL_BYTES
+            ),
             max_total_bytes
         ),
         timeout_ms => positive(
-            maps:get(timeout_ms, Limits, 10000), timeout_ms
+            maps:get(
+                timeout_ms, Limits, ?STP_DEFAULT_REASSEMBLY_TIMEOUT_MS
+            ),
+            timeout_ms
         )
     }}.
 

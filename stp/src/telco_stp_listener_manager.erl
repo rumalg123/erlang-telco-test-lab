@@ -20,10 +20,14 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 add(Config) ->
-    gen_server:call(?MODULE, {add, Config}, 10000).
+    gen_server:call(
+        ?MODULE, {add, Config}, ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
+    ).
 
 remove(Name) ->
-    gen_server:call(?MODULE, {remove, Name}, 10000).
+    gen_server:call(
+        ?MODULE, {remove, Name}, ?STP_DEFAULT_LONG_CALL_TIMEOUT_MS
+    ).
 
 list() ->
     gen_server:call(?MODULE, list).
@@ -38,7 +42,7 @@ send(ListenerName, AssocId, Stream, Ppid, Data) ->
     gen_server:call(
         ?MODULE,
         {send, ListenerName, AssocId, Stream, Ppid, Data},
-        5000
+        ?STP_DEFAULT_CALL_TIMEOUT_MS
     ).
 
 profile_for_peer(Profiles, RemoteIp, RemotePort) when is_list(Profiles) ->
@@ -207,7 +211,9 @@ validate_config(Config) when is_map(Config) ->
                         name => Name,
                         port => maps:get(port, Config, ?STP_M3UA_PORT),
                         local_ips => maps:get(local_ips, Config, [any]),
-                        backlog => maps:get(backlog, Config, 128),
+                        backlog => maps:get(
+                            backlog, Config, ?STP_DEFAULT_LISTENER_BACKLOG
+                        ),
                         profiles => Profiles
                     }};
                 false ->
@@ -450,9 +456,9 @@ ancillary_info(_Ancillary) ->
 
 valid_ppid(_Adaptation, 0) -> true;
 valid_ppid(m3ua, ?STP_M3UA_PPID) -> true;
-valid_ppid(m3ua, 16#03000000) -> true;
-valid_ppid(m2pa, 5) -> true;
-valid_ppid(m2pa, 16#05000000) -> true;
+valid_ppid(m3ua, ?STP_M3UA_NETWORK_PPID) -> true;
+valid_ppid(m2pa, ?STP_M2PA_PPID) -> true;
+valid_ppid(m2pa, ?STP_M2PA_NETWORK_PPID) -> true;
 valid_ppid(_Adaptation, _Ppid) -> false.
 
 inbound_link_config(

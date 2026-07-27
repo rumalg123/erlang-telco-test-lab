@@ -1,6 +1,8 @@
 -module(telco_stp_transport_sctp_inbound).
 -behaviour(telco_stp_transport).
 
+-include("telco_stp.hrl").
+
 -export([open/2, send/2, handle_info/2, close/1]).
 
 open(_Owner, Config) ->
@@ -44,5 +46,5 @@ handle_info(_Info, State) ->
 close(_State) ->
     ok.
 
-adaptation_ppid(m3ua) -> 3;
-adaptation_ppid(m2pa) -> 5.
+adaptation_ppid(m3ua) -> ?STP_M3UA_PPID;
+adaptation_ppid(m2pa) -> ?STP_M2PA_PPID.
