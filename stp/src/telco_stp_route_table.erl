@@ -156,7 +156,7 @@ normalize(Route) when is_map(Route) ->
             Enabled = maps:get(enabled, Route, true),
             case valid_uint24(Dpc) andalso valid_uint24(Mask) andalso
                  is_list(Linksets) andalso Linksets =/= [] andalso
-                 is_integer(Priority) andalso Priority >= 0 andalso
+                 valid_non_negative(Priority) andalso
                  valid_selector(Ni, 3) andalso valid_selector(Si, 15) andalso
                  valid_pc_patterns(OpcPatterns) andalso
                  valid_selector(NetworkAppearance, ?STP_UINT32_MAX) andalso
@@ -185,12 +185,12 @@ normalize(Route) when is_map(Route) ->
 normalize(Route) ->
     {error, {invalid_route, Route}}.
 
-validate_lookup(#{dpc := Dpc, ni := Ni, si := Si})
-        when is_integer(Dpc), Dpc >= 0,
-             Dpc =< ?STP_POINT_CODE_MASK_24,
-             is_integer(Ni), Ni >= 0, Ni =< 3,
-             is_integer(Si), Si >= 0, Si =< 15 ->
-    ok;
+validate_lookup(#{dpc := Dpc, ni := Ni, si := Si} = Message) ->
+    case valid_uint24(Dpc) andalso valid_selector(Ni, 3) andalso
+         valid_selector(Si, 15) of
+        true -> ok;
+        false -> {error, {invalid_route_lookup, Message}}
+    end;
 validate_lookup(Message) ->
     {error, {invalid_route_lookup, Message}}.
 
@@ -239,18 +239,24 @@ route_before(A, B) ->
     end.
 
 valid_uint24(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso
-        Value =< ?STP_POINT_CODE_MASK_24.
+    telco_stp_codec:in_range(Value, 0, ?STP_POINT_CODE_MASK_24).
+
+valid_uint16(Value) ->
+    telco_stp_codec:in_range(Value, 0, ?STP_UINT16_MAX).
+
+valid_uint8(Value) ->
+    telco_stp_codec:in_range(Value, 0, ?STP_UINT8_MAX).
+
+valid_non_negative(Value) ->
+    is_integer(Value) andalso Value >= 0.
 
 valid_selector(any, _Max) ->
     true;
 valid_selector(Value, Max) when is_integer(Value) ->
-    Value >= 0 andalso Value =< Max;
+    telco_stp_codec:in_range(Value, 0, Max);
 valid_selector(Values, Max) when is_list(Values), Values =/= [] ->
     lists:all(
-        fun(Value) ->
-            is_integer(Value) andalso Value >= 0 andalso Value =< Max
-        end,
+        fun(Value) -> telco_stp_codec:in_range(Value, 0, Max) end,
         Values
     );
 valid_selector(_Value, _Max) ->
@@ -283,7 +289,7 @@ pc_patterns_match(Patterns, PointCode) ->
 valid_routing_context(undefined) ->
     true;
 valid_routing_context(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value =< ?STP_UINT32_MAX.
+    telco_stp_codec:in_range(Value, 0, ?STP_UINT32_MAX).
 
 valid_traffic_mode(override) -> true;
 valid_traffic_mode(loadshare) -> true;
@@ -341,21 +347,23 @@ ssnm_status(scon, Params, Metadata) ->
     Level = maps:get(congestion_indications, Params, 1),
     case Level of
         0 -> {ok, available, Metadata};
-        Value when is_integer(Value), Value >= 1, Value =< 3 ->
-            {ok, congested, Metadata#{congestion => Value}};
         Value ->
-            {error, {invalid_congestion_indications, Value}}
+            case telco_stp_codec:in_range(Value, 1, 3) of
+                true -> {ok, congested, Metadata#{congestion => Value}};
+                false -> {error, {invalid_congestion_indications, Value}}
+            end
     end;
 ssnm_status(dupu, Params, Metadata) ->
     case maps:find(user_cause, Params) of
-        {ok, {Cause, User}}
-                when is_integer(Cause), Cause >= 0,
-                     Cause =< ?STP_UINT16_MAX,
-                     is_integer(User), User >= 0,
-                     User =< ?STP_UINT16_MAX ->
-            {ok, user_unavailable, Metadata#{
-                cause => Cause, user_part => User
-            }};
+        {ok, {Cause, User}} ->
+            case valid_uint16(Cause) andalso valid_uint16(User) of
+                true ->
+                    {ok, user_unavailable, Metadata#{
+                        cause => Cause, user_part => User
+                    }};
+                false ->
+                    {error, {missing_or_invalid_ssnm_parameter, user_cause}}
+            end;
         _ ->
             {error, {missing_or_invalid_ssnm_parameter, user_cause}}
     end.
@@ -367,7 +375,7 @@ validate_destination_update(Status, Affected, Metadata)
     ValidAffected = is_list(Affected) andalso Affected =/= [] andalso
         lists:all(
             fun({Mask, Dpc}) ->
-                is_integer(Mask) andalso Mask >= 0 andalso Mask =< 255 andalso
+                valid_uint8(Mask) andalso
                 valid_uint24(Dpc)
             end,
             Affected
