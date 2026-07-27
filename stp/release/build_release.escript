@@ -36,6 +36,7 @@ build([
     ok = require_file(VmArgs),
     ok = require_file(Launcher),
     ok = require_empty_output(OutputRoot),
+    ok = verify_application_modules(AppEbin),
     {ok, AppVsn} = application_version(
         filename:join(AppEbin, "telco_stp.app")
     ),
@@ -185,6 +186,34 @@ application_version(AppFile) ->
             {ok, proplists:get_value(vsn, Properties)};
         Error ->
             error({invalid_application_resource, AppFile, Error})
+    end.
+
+verify_application_modules(AppEbin) ->
+    AppFile = filename:join(AppEbin, "telco_stp.app"),
+    {ok, [{application, telco_stp, Properties}]} = file:consult(AppFile),
+    ListedModules = [
+        atom_to_list(Module)
+        || Module <- proplists:get_value(modules, Properties, [])
+    ],
+    {ok, Entries} = file:list_dir(AppEbin),
+    BeamModules = [
+        filename:basename(Name, ".beam")
+        || Name <- Entries,
+           filename:extension(Name) =:= ".beam"
+    ],
+    MissingFromApp = lists:sort(BeamModules -- ListedModules),
+    MissingBeam = lists:sort(ListedModules -- BeamModules),
+    case {MissingFromApp, MissingBeam} of
+        {[], []} ->
+            ok;
+        _ ->
+            error({
+                application_modules_mismatch,
+                [
+                    {missing_from_app, MissingFromApp},
+                    {missing_beam, MissingBeam}
+                ]
+            })
     end.
 
 make_boot(RelBase, AppEbin) ->
