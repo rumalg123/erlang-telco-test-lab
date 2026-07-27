@@ -148,7 +148,7 @@ ssnm_parameters_roundtrip_test() ->
 
 management_parameters_roundtrip_test() ->
     Params = #{
-        error_code => 16#0d,
+        error_code => ?STP_M3UA_ERROR_MANAGEMENT_BLOCKING,
         status => {1, 2},
         diagnostic_information => <<1, 2, 3>>
     },
