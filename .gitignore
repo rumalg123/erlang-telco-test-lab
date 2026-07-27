@@ -8,6 +8,7 @@
 .vscode
 # Local container deployment state and credentials.
 /.env
+*.iml
 
 # The complete OTP target system is seeded into this host directory on first
 # start. Keep only operator-managed release inputs and the live-ebin placeholder
