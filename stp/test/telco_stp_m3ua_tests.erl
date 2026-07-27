@@ -1,5 +1,6 @@
 -module(telco_stp_m3ua_tests).
 
+-include("telco_stp.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 data_roundtrip_test() ->
@@ -250,13 +251,20 @@ deregistration_results_roundtrip_test() ->
 
 malformed_nested_routing_key_test() ->
     RoutingKey = <<
-        16#0207:16/big, 11:16/big,
-        16#020a:16/big, 7:16/big, 1:24,
+        ?STP_M3UA_PARAM_ROUTING_KEY:16/big, 11:16/big,
+        ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER:16/big, 7:16/big, 1:24,
         0:8
     >>,
     Length = 8 + byte_size(RoutingKey),
     ?assertMatch(
-        {error, {truncated_nested_parameter, 16#020a, 7}},
+        {
+            error,
+            {
+                truncated_nested_parameter,
+                ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER,
+                7
+            }
+        },
         telco_stp_m3ua:decode(
             <<1, 0, 9, 1, Length:32/big, RoutingKey/binary>>
         )
@@ -264,11 +272,12 @@ malformed_nested_routing_key_test() ->
 
 duplicate_nested_routing_key_parameter_test() ->
     RoutingKey = <<
-        16#020a:16/big, 8:16/big, 1:32/big,
-        16#020a:16/big, 8:16/big, 2:32/big,
-        16#020b:16/big, 8:16/big, 0:8, 16#010203:24/big
+        ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER:16/big, 8:16/big, 1:32/big,
+        ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER:16/big, 8:16/big, 2:32/big,
+        ?STP_M3UA_PARAM_DESTINATION_POINT_CODE:16/big, 8:16/big,
+        0:8, 16#010203:24/big
     >>,
-    Parameter = m3ua_tlv(16#0207, RoutingKey),
+    Parameter = m3ua_tlv(?STP_M3UA_PARAM_ROUTING_KEY, RoutingKey),
     Length = 8 + byte_size(Parameter),
     ?assertEqual(
         {error, {duplicate_nested_parameter, local_rk_identifier}},
@@ -279,11 +288,13 @@ duplicate_nested_routing_key_parameter_test() ->
 
 unsupported_registration_result_parameter_test() ->
     RegistrationResult = <<
-        16#020a:16/big, 8:16/big, 1:32/big,
+        ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER:16/big, 8:16/big, 1:32/big,
         16#9999:16/big, 8:16/big, 2:32/big,
-        16#0006:16/big, 8:16/big, 3:32/big
+        ?STP_M3UA_PARAM_ROUTING_CONTEXT:16/big, 8:16/big, 3:32/big
     >>,
-    Parameter = m3ua_tlv(16#0208, RegistrationResult),
+    Parameter = m3ua_tlv(
+        ?STP_M3UA_PARAM_REGISTRATION_RESULT, RegistrationResult
+    ),
     Length = 8 + byte_size(Parameter),
     ?assertEqual(
         {error, {unsupported_nested_parameter, 16#9999}},
@@ -294,13 +305,22 @@ unsupported_registration_result_parameter_test() ->
 
 invalid_registration_result_parameter_shape_test() ->
     RegistrationResult = <<
-        16#020a:16/big, 7:16/big, 1:24,
+        ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER:16/big, 7:16/big, 1:24,
         0:8
     >>,
-    Parameter = m3ua_tlv(16#0208, RegistrationResult),
+    Parameter = m3ua_tlv(
+        ?STP_M3UA_PARAM_REGISTRATION_RESULT, RegistrationResult
+    ),
     Length = 8 + byte_size(Parameter),
     ?assertEqual(
-        {error, {invalid_nested_parameter, 16#020a, <<0, 0, 1>>}},
+        {
+            error,
+            {
+                invalid_nested_parameter,
+                ?STP_M3UA_PARAM_LOCAL_RK_IDENTIFIER,
+                <<0, 0, 1>>
+            }
+        },
         telco_stp_m3ua:decode(
             <<1, 0, 9, 2, Length:32/big, Parameter/binary>>
         )
