@@ -1,5 +1,7 @@
 -module(telco_stp_slt).
 
+-include("telco_stp.hrl").
+
 -export([encode/1, decode/1]).
 
 %% ITU-T Q.707 signalling network testing and maintenance messages.
@@ -12,12 +14,13 @@ encode(#{type := Type, test_pattern := Pattern})
     try
         H1 = type_code(Type),
         Length = byte_size(Pattern),
-        true = Length >= 1 andalso Length =< 15 orelse
+        true = Length >= ?STP_SLT_MIN_PATTERN_BYTES andalso
+            Length =< ?STP_SLT_MAX_PATTERN_BYTES orelse
             error({invalid_slt_pattern_length, Length}),
         %% H0 occupies bits 1..4 and H1 bits 5..8. In the following
         %% octet the Q.707 length indicator occupies bits 1..4.
         {ok, <<
-            H1:4, 1:4,
+            H1:4, ?STP_SLT_H0:4,
             0:4, Length:4,
             Pattern/binary
         >>}
@@ -28,8 +31,9 @@ encode(Message) ->
     {error, {invalid_slt_message, Message}}.
 
 -spec decode(binary()) -> {ok, map()} | {error, term()}.
-decode(<<H1:4, 1:4, _Spare:4, Length:4, Rest/binary>>)
-        when Length >= 1, Length =< 15 ->
+decode(<<H1:4, ?STP_SLT_H0:4, _Spare:4, Length:4, Rest/binary>>)
+        when Length >= ?STP_SLT_MIN_PATTERN_BYTES,
+             Length =< ?STP_SLT_MAX_PATTERN_BYTES ->
     case Rest of
         <<Pattern:Length/binary>> ->
             try

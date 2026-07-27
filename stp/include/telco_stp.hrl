@@ -108,6 +108,15 @@
 -define(STP_MTP3_ITU_SLS_SHIFT, 28).
 -define(STP_MTP3_SLS_MASK, 16#0f).
 
+%% SCCP subsystem management and signalling link testing.
+-define(STP_SCMG_MIN_CONGESTION_LEVEL, 1).
+-define(STP_SCMG_HIGH_CONGESTION_LEVEL, 7).
+-define(STP_SCMG_MEDIUM_CONGESTION_LEVEL, 4).
+-define(STP_SCMG_MAX_CONGESTION_LEVEL, 8).
+-define(STP_SLT_H0, 1).
+-define(STP_SLT_MIN_PATTERN_BYTES, 1).
+-define(STP_SLT_MAX_PATTERN_BYTES, 15).
+
 %% Configuration persistence and HA schemas.
 -define(STP_CONFIG_MAGIC, <<"TSTPCFG", 1>>).
 -define(STP_CONFIG_SCHEMA_VERSION, 1).

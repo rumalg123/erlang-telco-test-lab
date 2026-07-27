@@ -130,8 +130,12 @@ encode_message(#{
     case Type of
         ssc ->
             Congestion = maps:get(congestion_level, Message),
-            <<Base/binary, (range(
-                Congestion, 1, 8, congestion_level
+            <<Base/binary, (telco_stp_codec:integer_range(
+                Congestion,
+                ?STP_SCMG_MIN_CONGESTION_LEVEL,
+                ?STP_SCMG_MAX_CONGESTION_LEVEL,
+                congestion_level,
+                invalid_integer
             )):8>>;
         _ ->
             Base
@@ -177,7 +181,10 @@ decode_fields(TypeCode, Ssn, PointCode, Smi, Congestion) ->
         multiplicity => Smi
     },
     case {Type, Congestion} of
-        {ssc, Level} when is_integer(Level), Level >= 1, Level =< 8 ->
+        {ssc, Level}
+                when is_integer(Level),
+                     Level >= ?STP_SCMG_MIN_CONGESTION_LEVEL,
+                     Level =< ?STP_SCMG_MAX_CONGESTION_LEVEL ->
             Base#{congestion_level => Level};
         {ssc, Level} ->
             error({invalid_scmg_congestion, Level});
@@ -273,7 +280,7 @@ constraints(Message, Entries) ->
                 || Entry <- Entries,
                    maps:get(point_code, Entry) =:= PointCode,
                    maps:get(ssn, Entry) =:= Ssn,
-                   network_appearance_matches(
+                   telco_stp_match:network_appearance(
                        NetworkAppearance,
                        maps:get(network_appearance, Entry)
                    )
@@ -309,7 +316,8 @@ constraints(Message, Entries) ->
 validate_state(PointCode, Ssn, Status, Metadata) ->
     case is_integer(PointCode) andalso PointCode >= 0 andalso
          PointCode =< ?STP_POINT_CODE_MASK_24 andalso
-         is_integer(Ssn) andalso Ssn >= 0 andalso Ssn =< 255 andalso
+         is_integer(Ssn) andalso Ssn >= 0 andalso
+         Ssn =< ?STP_UINT8_MAX andalso
          lists:member(
              Status,
              [
@@ -378,20 +386,16 @@ encode_point_code(PointCode, ansi) ->
 encode_point_code(_PointCode, Variant) ->
     error({invalid_sccp_variant, Variant}).
 
-scmg_congestion_to_m3ua(Level) when Level >= 7 -> 3;
-scmg_congestion_to_m3ua(Level) when Level >= 4 -> 2;
-scmg_congestion_to_m3ua(_Level) -> 1.
-
-network_appearance_matches(any, _Value) -> true;
-network_appearance_matches(_Value, any) -> true;
-network_appearance_matches(Value, Value) -> true;
-network_appearance_matches(_A, _B) -> false.
+scmg_congestion_to_m3ua(Level)
+        when Level >= ?STP_SCMG_HIGH_CONGESTION_LEVEL ->
+    3;
+scmg_congestion_to_m3ua(Level)
+        when Level >= ?STP_SCMG_MEDIUM_CONGESTION_LEVEL ->
+    2;
+scmg_congestion_to_m3ua(_Level) ->
+    1.
 
 uint(Value, Bits, Name) ->
-    range(Value, 0, (1 bsl Bits) - 1, Name).
-
-range(Value, Min, Max, _Name)
-        when is_integer(Value), Value >= Min, Value =< Max ->
-    Value;
-range(Value, _Min, _Max, Name) ->
-    error({invalid_integer, Name, Value}).
+    telco_stp_codec:integer_range(
+        Value, 0, (1 bsl Bits) - 1, Name, invalid_integer
+    ).
