@@ -15,6 +15,7 @@
 -define(STP_UINT16_MAX, 16#ffff).
 -define(STP_UINT32_MAX, 16#ffffffff).
 -define(STP_POINT_CODE_MASK_24, 16#ffffff).
+-define(STP_ITU_POINT_CODE_MAX, 16#3fff).
 -define(STP_MAX_MILLISECONDS, 3600000).
 -define(STP_MAX_SHORT_BYTES, 65535).
 -define(STP_MICROSECONDS_PER_MILLISECOND, 1000).
@@ -99,6 +100,9 @@
 
 %% MTP3 service indicator for signalling network management.
 -define(STP_MTP3_SI_SNMM, 0).
+-define(STP_MTP3_ITU_OPC_SHIFT, 14).
+-define(STP_MTP3_ITU_SLS_SHIFT, 28).
+-define(STP_MTP3_SLS_MASK, 16#0f).
 
 %% Configuration persistence and HA schemas.
 -define(STP_CONFIG_MAGIC, <<"TSTPCFG", 1>>).

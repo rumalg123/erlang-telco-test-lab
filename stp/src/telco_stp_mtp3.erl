@@ -1,5 +1,7 @@
 -module(telco_stp_mtp3).
 
+-include("telco_stp.hrl").
+
 -export([encode/2, decode/2]).
 
 -type variant() :: itu | ansi.
@@ -23,7 +25,9 @@ encode(itu, Message) ->
         Sls = uint(maps:get(sls, Message), 4, sls),
         Sio = sio(Message),
         Payload = payload(Message),
-        Label = Dpc bor (Opc bsl 14) bor (Sls bsl 28),
+        Label = Dpc
+            bor (Opc bsl ?STP_MTP3_ITU_OPC_SHIFT)
+            bor (Sls bsl ?STP_MTP3_ITU_SLS_SHIFT),
         {ok, <<Sio:8, Label:32/little, Payload/binary>>}
     catch
         error:Reason -> {error, Reason}
@@ -46,9 +50,10 @@ encode(Variant, _Message) ->
 decode(itu, <<Sio:8, Label:32/little, Payload/binary>>) ->
     {Ni, Mp, Si} = decode_sio(Sio),
     {ok, #{
-        dpc => Label band 16#3fff,
-        opc => (Label bsr 14) band 16#3fff,
-        sls => (Label bsr 28) band 16#0f,
+        dpc => Label band ?STP_ITU_POINT_CODE_MAX,
+        opc => (Label bsr ?STP_MTP3_ITU_OPC_SHIFT)
+            band ?STP_ITU_POINT_CODE_MAX,
+        sls => (Label bsr ?STP_MTP3_ITU_SLS_SHIFT) band ?STP_MTP3_SLS_MASK,
         si => Si,
         ni => Ni,
         mp => Mp,
@@ -79,7 +84,7 @@ sio(Message) ->
     (Ni bsl 6) bor (Mp bsl 4) bor Si.
 
 decode_sio(Sio) ->
-    {(Sio bsr 6) band 3, (Sio bsr 4) band 3, Sio band 16#0f}.
+    {(Sio bsr 6) band 3, (Sio bsr 4) band 3, Sio band ?STP_MTP3_SLS_MASK}.
 
 payload(Message) ->
     Value = maps:get(payload, Message),

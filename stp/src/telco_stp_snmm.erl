@@ -199,7 +199,7 @@ encode_point_code(ansi, PointCode) ->
     <<(uint(PointCode, 24, affected_destination)):24/little>>.
 
 decode_point_code(itu, <<PointCode:16/little, Rest/binary>>)
-        when PointCode =< 16#3fff ->
+        when PointCode =< ?STP_ITU_POINT_CODE_MAX ->
     {ok, PointCode, Rest};
 decode_point_code(itu, <<PointCode:16/little, _Rest/binary>>) ->
     {error, {invalid_snmm_itu_point_code, PointCode}};

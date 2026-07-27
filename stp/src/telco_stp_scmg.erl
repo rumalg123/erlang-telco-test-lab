@@ -147,11 +147,11 @@ decode_message(_Binary, Variant) ->
     error({invalid_sccp_variant, Variant}).
 
 decode_itu(<<TypeCode:8, Ssn:8, PointCode:16/little, Smi:8>>)
-        when PointCode =< 16#3fff ->
+        when PointCode =< ?STP_ITU_POINT_CODE_MAX ->
     decode_fields(TypeCode, Ssn, PointCode, Smi, undefined);
 decode_itu(<<
     TypeCode:8, Ssn:8, PointCode:16/little, Smi:8, Congestion:8
->>) when PointCode =< 16#3fff ->
+>>) when PointCode =< ?STP_ITU_POINT_CODE_MAX ->
     decode_fields(
         TypeCode, Ssn, PointCode, Smi, Congestion
     );

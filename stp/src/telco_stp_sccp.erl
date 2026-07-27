@@ -549,7 +549,7 @@ decode_global_title(Gti, Rest) ->
 decode_point_code(0, Rest, _Variant) ->
     {#{}, Rest};
 decode_point_code(1, <<PointCode:16/little, Rest/binary>>, itu)
-        when PointCode =< 16#3fff ->
+        when PointCode =< ?STP_ITU_POINT_CODE_MAX ->
     {#{point_code => PointCode}, Rest};
 decode_point_code(1, <<PointCode:24/little, Rest/binary>>, ansi) ->
     {#{point_code => PointCode}, Rest};
