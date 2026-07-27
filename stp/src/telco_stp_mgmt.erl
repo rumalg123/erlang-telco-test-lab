@@ -1,6 +1,8 @@
 -module(telco_stp_mgmt).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([start_link/0, execute/2, reload_credentials/0, hash_token/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
@@ -85,7 +87,7 @@ execute_authorized(Identity, Request, State) ->
 
 load_credentials() ->
     Credentials = application:get_env(
-        telco_stp, management_credentials, []
+        ?STP_APP, ?STP_ENV_MANAGEMENT_CREDENTIALS, []
     ),
     true = is_list(Credentials) orelse
         error(invalid_management_credentials),

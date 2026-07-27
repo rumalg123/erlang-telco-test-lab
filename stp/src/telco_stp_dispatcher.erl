@@ -1,6 +1,8 @@
 -module(telco_stp_dispatcher).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     transfer/1,
@@ -46,12 +48,12 @@ overload_status() ->
 init([]) ->
     Seed = {
         erlang:phash2(node()),
-        erlang:monotonic_time() band 16#ffffffff,
-        erlang:unique_integer([positive]) band 16#ffffffff
+        erlang:monotonic_time() band ?STP_UINT32_MAX,
+        erlang:unique_integer([positive]) band ?STP_UINT32_MAX
     },
     {ok, OverloadLimits} = normalize_overload_limits(
         application:get_env(
-            telco_stp, overload_limits,
+            ?STP_APP, ?STP_ENV_OVERLOAD_LIMITS,
             #{high_watermark => 10000, low_watermark => 5000}
         )
     ),

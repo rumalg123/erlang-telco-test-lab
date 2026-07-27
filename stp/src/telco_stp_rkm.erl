@@ -1,6 +1,8 @@
 -module(telco_stp_rkm).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     register/4,
@@ -12,8 +14,6 @@
     status/0
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
-
--define(UINT32_MAX, 16#ffffffff).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -46,7 +46,7 @@ status() ->
     gen_server:call(?MODULE, status).
 
 init([]) ->
-    Policy0 = application:get_env(telco_stp, rkm_policy, #{}),
+    Policy0 = application:get_env(?STP_APP, ?STP_ENV_RKM_POLICY, #{}),
     Policy = normalize_global_policy(Policy0),
     {ok, #{
         registrations => #{},
@@ -138,14 +138,14 @@ handle_info(_Info, State) ->
 normalize_global_policy(Policy) when is_map(Policy) ->
     Max = maps:get(max_registrations, Policy, 4096),
     RcStart = maps:get(rc_start, Policy, 10000),
-    RcEnd = maps:get(rc_end, Policy, ?UINT32_MAX),
+    RcEnd = maps:get(rc_end, Policy, ?STP_UINT32_MAX),
     true = is_integer(Max) andalso Max > 0 andalso Max =< 1000000 orelse
         error({invalid_rkm_max_registrations, Max}),
     true = is_integer(RcStart) andalso RcStart > 0 andalso
-        RcStart =< ?UINT32_MAX orelse
+        RcStart =< ?STP_UINT32_MAX orelse
         error({invalid_rkm_rc_start, RcStart}),
     true = is_integer(RcEnd) andalso RcEnd >= RcStart andalso
-        RcEnd =< ?UINT32_MAX orelse
+        RcEnd =< ?STP_UINT32_MAX orelse
         error({invalid_rkm_rc_end, RcEnd}),
     Policy#{
         max_registrations => Max,
@@ -737,4 +737,4 @@ valid_context_list(_Contexts) ->
     [].
 
 valid_uint32(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value =< ?UINT32_MAX.
+    is_integer(Value) andalso Value >= 0 andalso Value =< ?STP_UINT32_MAX.

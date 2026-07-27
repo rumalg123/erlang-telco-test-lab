@@ -1,14 +1,10 @@
 -module(telco_stp_transport_sctp).
 -behaviour(telco_stp_transport).
 
+-include("telco_stp.hrl").
 -include_lib("kernel/include/inet_sctp.hrl").
 
 -export([open/2, send/2, handle_info/2, close/1]).
-
--define(M3UA_PPID, 3).
--define(M3UA_PORT, 2905).
--define(M2PA_PPID, 5).
--define(M2PA_PORT, 3565).
 
 open(Owner, Config) ->
     case remote_endpoint(Config) of
@@ -188,15 +184,15 @@ ancillary_info(#sctp_sndrcvinfo{
 ancillary_info(_Ancillary) ->
     {error, missing_sctp_sndrcvinfo}.
 
-default_port(m3ua) -> ?M3UA_PORT;
-default_port(m2pa) -> ?M2PA_PORT.
+default_port(m3ua) -> ?STP_M3UA_PORT;
+default_port(m2pa) -> ?STP_M2PA_PORT.
 
-adaptation_ppid(m3ua) -> ?M3UA_PPID;
-adaptation_ppid(m2pa) -> ?M2PA_PPID.
+adaptation_ppid(m3ua) -> ?STP_M3UA_PPID;
+adaptation_ppid(m2pa) -> ?STP_M2PA_PPID.
 
 valid_ppid(_Adaptation, 0) -> true;
-valid_ppid(m3ua, ?M3UA_PPID) -> true;
+valid_ppid(m3ua, ?STP_M3UA_PPID) -> true;
 valid_ppid(m3ua, 16#03000000) -> true;
-valid_ppid(m2pa, ?M2PA_PPID) -> true;
+valid_ppid(m2pa, ?STP_M2PA_PPID) -> true;
 valid_ppid(m2pa, 16#05000000) -> true;
 valid_ppid(_Adaptation, _Ppid) -> false.

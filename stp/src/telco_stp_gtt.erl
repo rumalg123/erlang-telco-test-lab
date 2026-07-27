@@ -1,6 +1,8 @@
 -module(telco_stp_gtt).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     add/1,
@@ -9,8 +11,6 @@
     list/0
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
-
--define(DEFAULT_MAX_CHAIN_DEPTH, 8).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -29,10 +29,11 @@ list() ->
 
 init([]) ->
     MaxDepth = application:get_env(
-        telco_stp, gtt_max_chain_depth, ?DEFAULT_MAX_CHAIN_DEPTH
+        ?STP_APP, ?STP_ENV_GTT_MAX_CHAIN_DEPTH,
+        ?STP_GTT_DEFAULT_MAX_CHAIN_DEPTH
     ),
     true = is_integer(MaxDepth) andalso MaxDepth > 0 andalso
-        MaxDepth =< 64,
+        MaxDepth =< ?STP_GTT_MAX_CHAIN_DEPTH,
     {ok, #{rules => #{}, max_chain_depth => MaxDepth}}.
 
 handle_call({add, Rule0}, _From, #{rules := Rules} = State) ->
@@ -221,7 +222,7 @@ normalize_match(Match) when is_map(Match) ->
         ),
         point_code => numeric_selector(
             maps:get(point_code, Match, any),
-            16#ffffff, point_code
+            ?STP_POINT_CODE_MASK_24, point_code
         ),
         national_use => atom_selector(
             maps:get(national_use, Match, any),
@@ -284,7 +285,7 @@ normalize_set_value(gti, Value)
 normalize_set_value(gti, Value) ->
     error({invalid_gti, Value});
 normalize_set_value(point_code, Value) ->
-    uint_max(Value, 16#ffffff, point_code);
+    uint_max(Value, ?STP_POINT_CODE_MASK_24, point_code);
 normalize_set_value(ssn, Value) ->
     uint(Value, 8, ssn);
 normalize_set_value(routing_indicator, Value)

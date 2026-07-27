@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = $PSScriptRoot
+$Include = Join-Path $ProjectRoot 'include'
 $Ebin = Join-Path $ProjectRoot '_build\default\lib\telco_stp\ebin'
 $TestEbin = Join-Path $ProjectRoot '_build\test\lib\telco_stp\test'
 
@@ -32,7 +33,7 @@ $Erlc = Join-Path $OtpHome 'bin\erlc.exe'
 
 New-Item -ItemType Directory -Force -Path $Ebin | Out-Null
 
-& $Erlc -Werror -o $Ebin (Join-Path $ProjectRoot 'src\telco_stp_transport.erl')
+& $Erlc -Werror -I $Include -o $Ebin (Join-Path $ProjectRoot 'src\telco_stp_transport.erl')
 if ($LASTEXITCODE -ne 0) {
     throw 'Failed to compile transport behaviour.'
 }
@@ -40,7 +41,7 @@ if ($LASTEXITCODE -ne 0) {
 $Sources = Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'src') -Filter '*.erl' |
     Where-Object Name -ne 'telco_stp_transport.erl' |
     ForEach-Object FullName
-& $Erlc -Werror -pa $Ebin -o $Ebin $Sources
+& $Erlc -Werror -I $Include -pa $Ebin -o $Ebin $Sources
 if ($LASTEXITCODE -ne 0) {
     throw 'Source compilation failed.'
 }
@@ -56,7 +57,7 @@ if ($Test) {
     New-Item -ItemType Directory -Force -Path $TestEbin | Out-Null
     $Tests = Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'test') -Filter '*.erl' |
         ForEach-Object FullName
-    & $Erlc -Werror -pa $Ebin -o $TestEbin $Tests
+    & $Erlc -Werror -I $Include -pa $Ebin -o $TestEbin $Tests
     if ($LASTEXITCODE -ne 0) {
         throw 'Test compilation failed.'
     }

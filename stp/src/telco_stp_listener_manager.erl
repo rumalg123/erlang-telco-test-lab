@@ -1,6 +1,7 @@
 -module(telco_stp_listener_manager).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
 -include_lib("kernel/include/inet_sctp.hrl").
 
 -export([
@@ -14,9 +15,6 @@
     profile_for_peer/3
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
-
--define(M3UA_PORT, 2905).
--define(M3UA_PPID, 3).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -34,7 +32,7 @@ configs() ->
     gen_server:call(?MODULE, configs).
 
 send(ListenerName, AssocId, Stream, Data) ->
-    send(ListenerName, AssocId, Stream, ?M3UA_PPID, Data).
+    send(ListenerName, AssocId, Stream, ?STP_M3UA_PPID, Data).
 
 send(ListenerName, AssocId, Stream, Ppid, Data) ->
     gen_server:call(
@@ -207,7 +205,7 @@ validate_config(Config) when is_map(Config) ->
                 true ->
                     {ok, Config#{
                         name => Name,
-                        port => maps:get(port, Config, ?M3UA_PORT),
+                        port => maps:get(port, Config, ?STP_M3UA_PORT),
                         local_ips => maps:get(local_ips, Config, [any]),
                         backlog => maps:get(backlog, Config, 128),
                         profiles => Profiles
@@ -451,7 +449,7 @@ ancillary_info(_Ancillary) ->
     {error, missing_sctp_sndrcvinfo}.
 
 valid_ppid(_Adaptation, 0) -> true;
-valid_ppid(m3ua, ?M3UA_PPID) -> true;
+valid_ppid(m3ua, ?STP_M3UA_PPID) -> true;
 valid_ppid(m3ua, 16#03000000) -> true;
 valid_ppid(m2pa, 5) -> true;
 valid_ppid(m2pa, 16#05000000) -> true;

@@ -1,6 +1,8 @@
 -module(telco_stp_ha).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     status/0,
@@ -11,8 +13,6 @@
     demote/0
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
-
--define(SCHEMA_VERSION, 1).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -38,7 +38,7 @@ demote() ->
     gen_server:call(?MODULE, demote).
 
 init([]) ->
-    Config0 = application:get_env(telco_stp, ha, #{}),
+    Config0 = application:get_env(?STP_APP, ?STP_ENV_HA, #{}),
     Config = normalize_config(Config0),
     case load_persisted_replica(Config) of
         {ok, Replica} ->
@@ -194,7 +194,7 @@ valid_path(_Path) -> false.
 create_envelope(State) ->
     Generation = maps:get(generation, State) + 1,
     Snapshot = #{
-        schema_version => ?SCHEMA_VERSION,
+        schema_version => ?STP_HA_SCHEMA_VERSION,
         source_node => node(),
         generation => Generation,
         created_at => erlang:system_time(millisecond),
@@ -347,7 +347,7 @@ accept_newer_replica(SourceNode, Envelope, Snapshot, State) ->
 
 verify_envelope(#{
     snapshot := #{
-        schema_version := ?SCHEMA_VERSION,
+        schema_version := ?STP_HA_SCHEMA_VERSION,
         source_node := SourceNode,
         generation := Generation,
         created_at := CreatedAt,

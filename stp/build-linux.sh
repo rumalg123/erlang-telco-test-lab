@@ -102,6 +102,7 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 erlc +debug_info -Werror \
+    -I "${SCRIPT_DIR}/include" \
     -o "${STAGING}" \
     "${SCRIPT_DIR}/src/telco_stp_transport.erl"
 
@@ -109,6 +110,7 @@ for source in "${SCRIPT_DIR}"/src/*.erl; do
     if [ "${source}" != \
          "${SCRIPT_DIR}/src/telco_stp_transport.erl" ]; then
         erlc +debug_info -Werror \
+            -I "${SCRIPT_DIR}/include" \
             -pa "${STAGING}" \
             -o "${STAGING}" \
             "${source}"
@@ -123,6 +125,7 @@ cp "${SCRIPT_DIR}/src/telco_stp.appup.src" \
 if [ "${RUN_TESTS}" = "true" ]; then
     for test_source in "${SCRIPT_DIR}"/test/*.erl; do
         erlc +debug_info -Werror \
+            -I "${SCRIPT_DIR}/include" \
             -pa "${STAGING}" \
             -o "${TEST_OUTPUT}" \
             "${test_source}"

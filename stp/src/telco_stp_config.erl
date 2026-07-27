@@ -1,13 +1,12 @@
 -module(telco_stp_config).
 
--export([export/0, save/1, load/2, apply/2, validate/1]).
+-include("telco_stp.hrl").
 
--define(MAGIC, <<"TSTPCFG", 1>>).
--define(SCHEMA_VERSION, 1).
+-export([export/0, save/1, load/2, apply/2, validate/1]).
 
 export() ->
     #{
-        schema_version => ?SCHEMA_VERSION,
+        schema_version => ?STP_CONFIG_SCHEMA_VERSION,
         generated_at => erlang:system_time(millisecond),
         otp_release => erlang:system_info(otp_release),
         links => telco_stp_link_manager:configs(),
@@ -37,7 +36,7 @@ save(Path0) ->
         ]),
         Digest = crypto:hash(sha256, Payload),
         Binary = <<
-            ?MAGIC/binary,
+            ?STP_CONFIG_MAGIC/binary,
             (byte_size(Payload)):32/big,
             Digest:32/binary,
             Payload/binary
@@ -89,7 +88,7 @@ apply(_Configuration, Mode) ->
     {error, {invalid_configuration_load_mode, Mode}}.
 
 validate(#{
-    schema_version := ?SCHEMA_VERSION,
+    schema_version := ?STP_CONFIG_SCHEMA_VERSION,
     links := Links,
     listeners := Listeners,
     routes := Routes,

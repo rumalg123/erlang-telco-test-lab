@@ -1,6 +1,8 @@
 -module(telco_stp_route_table).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     add/1,
@@ -138,7 +140,7 @@ normalize(Route) when is_map(Route) ->
     case [Key || Key <- Required, not maps:is_key(Key, Route)] of
         [] ->
             Dpc = maps:get(dpc, Route),
-            Mask = maps:get(mask, Route, 16#ffffff),
+            Mask = maps:get(mask, Route, ?STP_POINT_CODE_MASK_24),
             Linksets = maps:get(linksets, Route),
             Priority = maps:get(priority, Route, 100),
             Ni = maps:get(ni, Route, any),
@@ -157,7 +159,7 @@ normalize(Route) when is_map(Route) ->
                  is_integer(Priority) andalso Priority >= 0 andalso
                  valid_selector(Ni, 3) andalso valid_selector(Si, 15) andalso
                  valid_pc_patterns(OpcPatterns) andalso
-                 valid_selector(NetworkAppearance, 16#ffffffff) andalso
+                 valid_selector(NetworkAppearance, ?STP_UINT32_MAX) andalso
                  valid_routing_context(RoutingContext) andalso
                  valid_traffic_mode(TrafficMode) andalso
                  is_boolean(Enabled) of
@@ -184,7 +186,8 @@ normalize(Route) ->
     {error, {invalid_route, Route}}.
 
 validate_lookup(#{dpc := Dpc, ni := Ni, si := Si})
-        when is_integer(Dpc), Dpc >= 0, Dpc =< 16#ffffff,
+        when is_integer(Dpc), Dpc >= 0,
+             Dpc =< ?STP_POINT_CODE_MASK_24,
              is_integer(Ni), Ni >= 0, Ni =< 3,
              is_integer(Si), Si >= 0, Si =< 15 ->
     ok;
@@ -236,7 +239,8 @@ route_before(A, B) ->
     end.
 
 valid_uint24(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value =< 16#ffffff.
+    is_integer(Value) andalso Value >= 0 andalso
+        Value =< ?STP_POINT_CODE_MASK_24.
 
 valid_selector(any, _Max) ->
     true;
@@ -279,7 +283,7 @@ pc_patterns_match(Patterns, PointCode) ->
 valid_routing_context(undefined) ->
     true;
 valid_routing_context(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value =< 16#ffffffff.
+    is_integer(Value) andalso Value >= 0 andalso Value =< ?STP_UINT32_MAX.
 
 valid_traffic_mode(override) -> true;
 valid_traffic_mode(loadshare) -> true;

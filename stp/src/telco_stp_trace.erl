@@ -1,6 +1,8 @@
 -module(telco_stp_trace).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     configure/1,
@@ -11,11 +13,6 @@
     export_pcapng/1
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
-
--define(SHB_TYPE, 16#0a0d0d0a).
--define(IDB_TYPE, 1).
--define(EPB_TYPE, 6).
--define(DLT_USER0, 147).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -43,7 +40,7 @@ export_pcapng(Path) ->
     gen_server:call(?MODULE, {export_pcapng, Path}, 30000).
 
 init([]) ->
-    Config0 = application:get_env(telco_stp, trace, #{}),
+    Config0 = application:get_env(?STP_APP, ?STP_ENV_TRACE, #{}),
     {ok, Config} = normalize(Config0),
     {ok, #{
         config => Config,
@@ -200,22 +197,22 @@ export_file(Path0, Packets) ->
     end.
 
 section_header_block() ->
-    block(?SHB_TYPE, <<
+    block(?STP_PCAPNG_SHB_TYPE, <<
         16#1a2b3c4d:32/little,
         1:16/little, 0:16/little,
         16#ffffffffffffffff:64/little
     >>).
 
 interface_description_block() ->
-    block(?IDB_TYPE, <<
-        ?DLT_USER0:16/little, 0:16,
+    block(?STP_PCAPNG_IDB_TYPE, <<
+        ?STP_PCAPNG_DLT_USER0:16/little, 0:16,
         16#00040000:32/little
     >>).
 
 enhanced_packet_block(Packet) ->
     Timestamp = maps:get(timestamp_us, Packet),
-    High = (Timestamp bsr 32) band 16#ffffffff,
-    Low = Timestamp band 16#ffffffff,
+    High = (Timestamp bsr 32) band ?STP_UINT32_MAX,
+    Low = Timestamp band ?STP_UINT32_MAX,
     Captured = trace_payload(Packet),
     CapturedLength = byte_size(Captured),
     OriginalLength = maps:get(original_length, Packet) +
@@ -227,7 +224,7 @@ enhanced_packet_block(Packet) ->
         CapturedLength:32/little, OriginalLength:32/little,
         Captured/binary, 0:(PaddingLength * 8)
     >>,
-    block(?EPB_TYPE, Body).
+    block(?STP_PCAPNG_EPB_TYPE, Body).
 
 trace_payload(Packet) ->
     Direction =

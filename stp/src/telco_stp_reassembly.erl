@@ -1,6 +1,8 @@
 -module(telco_stp_reassembly).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([start_link/0, process/3, status/0, reset/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
@@ -22,7 +24,7 @@ reset() ->
 
 init([]) ->
     Limits = application:get_env(
-        telco_stp, sccp_reassembly_limits, #{}
+        ?STP_APP, ?STP_ENV_SCCP_REASSEMBLY_LIMITS, #{}
     ),
     {ok, #{
         contexts => #{},
@@ -417,7 +419,7 @@ context_summary(Context) ->
     }.
 
 context_id(Key) ->
-    erlang:phash2(Key, 16#ffffffff).
+    erlang:phash2(Key, ?STP_UINT32_MAX).
 
 cancel_context_timers(Contexts) ->
     lists:foreach(

@@ -1,6 +1,8 @@
 -module(telco_stp_audit).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     record/5,
@@ -9,9 +11,6 @@
     subscribe/1
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
-
--define(ZERO_HASH, <<0:256>>).
--define(MAX_FRAME_BYTES, 16777216).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -32,10 +31,10 @@ subscribe(Pid) when is_pid(Pid) ->
 
 init([]) ->
     Limit = application:get_env(
-        telco_stp, audit_history_limit, 10000
+        ?STP_APP, ?STP_ENV_AUDIT_HISTORY_LIMIT, 10000
     ),
     Path = application:get_env(
-        telco_stp, audit_log_path, undefined
+        ?STP_APP, ?STP_ENV_AUDIT_LOG_PATH, undefined
     ),
     case valid_limit(Limit) andalso valid_configured_path(Path) of
         false ->
@@ -183,7 +182,7 @@ verify_events([Event | Rest], ExpectedPrevious, ExpectedSequence) ->
     end.
 
 load_persisted(undefined, _Limit) ->
-    {ok, 0, ?ZERO_HASH, []};
+    {ok, 0, ?STP_ZERO_HASH, []};
 load_persisted(Path0, Limit) ->
     try
         Path = normalize_path(Path0),
@@ -204,7 +203,7 @@ load_persisted(Path0, Limit) ->
                         Error
                 end;
             {error, enoent} ->
-                {ok, 0, ?ZERO_HASH, []};
+                {ok, 0, ?STP_ZERO_HASH, []};
             {error, Reason} ->
                 {error, {audit_log_read_failed, Reason}}
         end
@@ -215,7 +214,7 @@ load_persisted(Path0, Limit) ->
 decode_frames(<<>>, Acc) ->
     {ok, lists:reverse(Acc)};
 decode_frames(<<Length:32/big, Rest/binary>>, Acc)
-        when Length > 0, Length =< ?MAX_FRAME_BYTES,
+        when Length > 0, Length =< ?STP_AUDIT_MAX_FRAME_BYTES,
              byte_size(Rest) >= Length ->
     <<Payload:Length/binary, Tail/binary>> = Rest,
     try binary_to_term(Payload, [safe]) of
@@ -261,14 +260,14 @@ verify_disk_chain([First | _] = Events) ->
         maps:get(sequence, First),
         maps:get(previous_hash, First)
     } of
-        {1, ?ZERO_HASH} ->
-            verify_events(Events, ?ZERO_HASH, 1);
+        {1, ?STP_ZERO_HASH} ->
+            verify_events(Events, ?STP_ZERO_HASH, 1);
         _ ->
             {error, audit_log_chain_origin_invalid}
     end.
 
 audit_tail([]) ->
-    {0, ?ZERO_HASH};
+    {0, ?STP_ZERO_HASH};
 audit_tail(Events) ->
     Last = lists:last(Events),
     {maps:get(sequence, Last), maps:get(hash, Last)}.

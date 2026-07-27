@@ -1,6 +1,8 @@
 -module(telco_stp_link).
 -behaviour(gen_statem).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/2,
     status/1,
@@ -823,9 +825,9 @@ send_transfer_message(Message, Data) ->
 
 initial_m2pa_state() ->
     #{
-        tx_fsn => 16#ffffff,
-        rx_fsn => 16#ffffff,
-        peer_bsn => 16#ffffff,
+        tx_fsn => ?STP_M2PA_MAX_SEQUENCE,
+        rx_fsn => ?STP_M2PA_MAX_SEQUENCE,
+        peer_bsn => ?STP_M2PA_MAX_SEQUENCE,
         unacked => [],
         local_status => out_of_service,
         remote_status => out_of_service,
@@ -1330,7 +1332,8 @@ retrieve_m2pa_messages(AfterFsn, Data) ->
 
 valid_m2pa_retrieval_sequence(undefined) -> true;
 valid_m2pa_retrieval_sequence(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso Value =< 16#ffffff.
+    is_integer(Value) andalso Value >= 0 andalso
+        Value =< ?STP_M2PA_MAX_SEQUENCE.
 
 entries_after_fsn(undefined, Entries) ->
     Entries;

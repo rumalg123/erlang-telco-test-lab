@@ -1,6 +1,8 @@
 -module(telco_stp_scmg).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     encode/2,
@@ -306,7 +308,7 @@ constraints(Message, Entries) ->
 
 validate_state(PointCode, Ssn, Status, Metadata) ->
     case is_integer(PointCode) andalso PointCode >= 0 andalso
-         PointCode =< 16#ffffff andalso
+         PointCode =< ?STP_POINT_CODE_MASK_24 andalso
          is_integer(Ssn) andalso Ssn >= 0 andalso Ssn =< 255 andalso
          lists:member(
              Status,

@@ -1,10 +1,8 @@
 -module(telco_stp_m2pa).
 
--export([encode/1, decode/1, next_sequence/1]).
+-include("telco_stp.hrl").
 
--define(VERSION, 1).
--define(CLASS, 11).
--define(MAX_SEQUENCE, 16#ffffff).
+-export([encode/1, decode/1, next_sequence/1]).
 
 -type link_status() ::
     alignment | proving_normal | proving_emergency | ready |
@@ -12,8 +10,8 @@
     out_of_service.
 -type message() :: #{
     type := user_data | link_status,
-    bsn := 0..?MAX_SEQUENCE,
-    fsn := 0..?MAX_SEQUENCE,
+    bsn := 0..?STP_M2PA_MAX_SEQUENCE,
+    fsn := 0..?STP_M2PA_MAX_SEQUENCE,
     priority => 0..3,
     mtp3 => binary(),
     status => link_status() | non_neg_integer(),
@@ -30,7 +28,8 @@ encode(#{type := Type, bsn := Bsn0, fsn := Fsn0} = Message) ->
         {TypeId, Body} = encode_body(Type, Message),
         Length = 16 + byte_size(Body),
         {ok, <<
-            ?VERSION:8, 0:8, ?CLASS:8, TypeId:8, Length:32/big,
+            ?STP_M2PA_VERSION:8, 0:8, ?STP_M2PA_CLASS:8,
+            TypeId:8, Length:32/big,
             0:8, Bsn:24/big, 0:8, Fsn:24/big, Body/binary
         >>}
     catch
@@ -40,7 +39,8 @@ encode(Message) ->
     {error, {invalid_m2pa_message, Message}}.
 
 -spec decode(binary()) -> {ok, message()} | {error, term()}.
-decode(<<?VERSION:8, _Spare:8, ?CLASS:8, TypeId:8, Length:32/big,
+decode(<<?STP_M2PA_VERSION:8, _Spare:8, ?STP_M2PA_CLASS:8,
+         TypeId:8, Length:32/big,
          _UnusedBsn:8, Bsn:24/big, _UnusedFsn:8, Fsn:24/big,
          Body/binary>> = Binary)
         when Length >= 16 ->
@@ -50,20 +50,20 @@ decode(<<?VERSION:8, _Spare:8, ?CLASS:8, TypeId:8, Length:32/big,
         Actual ->
             {error, {invalid_m2pa_length, Length, Actual}}
     end;
-decode(<<Version:8, _/binary>>) when Version =/= ?VERSION ->
+decode(<<Version:8, _/binary>>) when Version =/= ?STP_M2PA_VERSION ->
     {error, {unsupported_m2pa_version, Version}};
 decode(<<_Version:8, _Spare:8, Class:8, _/binary>>)
-        when Class =/= ?CLASS ->
+        when Class =/= ?STP_M2PA_CLASS ->
     {error, {invalid_m2pa_class, Class}};
 decode(Binary) when is_binary(Binary) ->
     {error, {truncated_m2pa_message, byte_size(Binary)}};
 decode(Value) ->
     {error, {not_binary, Value}}.
 
--spec next_sequence(0..?MAX_SEQUENCE) -> 0..?MAX_SEQUENCE.
-next_sequence(?MAX_SEQUENCE) -> 0;
+-spec next_sequence(0..?STP_M2PA_MAX_SEQUENCE) -> 0..?STP_M2PA_MAX_SEQUENCE.
+next_sequence(?STP_M2PA_MAX_SEQUENCE) -> 0;
 next_sequence(Value)
-        when is_integer(Value), Value >= 0, Value < ?MAX_SEQUENCE ->
+        when is_integer(Value), Value >= 0, Value < ?STP_M2PA_MAX_SEQUENCE ->
     Value + 1.
 
 encode_body(user_data, Message) ->
@@ -125,7 +125,8 @@ status_name(9) -> out_of_service;
 status_name(Value) -> Value.
 
 sequence(Value, _Name)
-        when is_integer(Value), Value >= 0, Value =< ?MAX_SEQUENCE ->
+        when is_integer(Value), Value >= 0,
+             Value =< ?STP_M2PA_MAX_SEQUENCE ->
     Value;
 sequence(Value, Name) ->
     error({invalid_m2pa_sequence, Name, Value}).

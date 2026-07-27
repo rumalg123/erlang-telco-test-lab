@@ -1,13 +1,13 @@
 -module(telco_stp_m3ua).
 
+-include("telco_stp.hrl").
+
 -export([
     encode/1,
     decode/1,
     encode_data/1,
     protocol_data/1
 ]).
-
--define(VERSION, 1).
 
 -type message_class() :: management | transfer | ssnm | aspsm | asptm | rkm.
 -type message() :: #{
@@ -25,7 +25,8 @@ encode(#{class := Class0, type := Type0} = Message) ->
         Type = type_id(Class0, Type0),
         Params = encode_params(maps:get(params, Message, #{})),
         Length = 8 + byte_size(Params),
-        {ok, <<?VERSION:8, 0:8, Class:8, Type:8, Length:32/big, Params/binary>>}
+        {ok, <<?STP_M3UA_VERSION:8, 0:8, Class:8, Type:8,
+               Length:32/big, Params/binary>>}
     catch
         error:Reason ->
             {error, Reason}
@@ -34,7 +35,7 @@ encode(Message) ->
     {error, {invalid_m3ua_message, Message}}.
 
 -spec decode(binary()) -> {ok, message()} | {error, term()}.
-decode(<<?VERSION:8, _Reserved:8, ClassId:8, TypeId:8, Length:32/big,
+decode(<<?STP_M3UA_VERSION:8, _Reserved:8, ClassId:8, TypeId:8, Length:32/big,
          Rest/binary>> = Binary)
         when Length >= 8 ->
     try
@@ -61,7 +62,7 @@ decode(<<?VERSION:8, _Reserved:8, ClassId:8, TypeId:8, Length:32/big,
         error:Reason ->
             {error, Reason}
     end;
-decode(<<Version:8, _/binary>>) when Version =/= ?VERSION ->
+decode(<<Version:8, _/binary>>) when Version =/= ?STP_M3UA_VERSION ->
     {error, {unsupported_version, Version}};
 decode(Binary) when is_binary(Binary) ->
     {error, {truncated_m3ua_header, byte_size(Binary)}};

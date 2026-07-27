@@ -1,6 +1,8 @@
 -module(telco_stp_alarm).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([
     start_link/0,
     raise/3,
@@ -39,10 +41,10 @@ init([]) ->
         history => [],
         subscribers => #{},
         history_limit => application:get_env(
-            telco_stp, alarm_history_limit, 1000
+            ?STP_APP, ?STP_ENV_ALARM_HISTORY_LIMIT, 1000
         ),
         active_limit => application:get_env(
-            telco_stp, active_alarm_limit, 1000
+            ?STP_APP, ?STP_ENV_ACTIVE_ALARM_LIMIT, 1000
         )
     }}.
 

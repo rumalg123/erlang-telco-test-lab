@@ -1,5 +1,7 @@
 -module(telco_stp_sccp).
 
+-include("telco_stp.hrl").
+
 -export([
     encode/1,
     encode/2,
@@ -13,13 +15,6 @@
     decode_segmentation/1,
     prepare_relay/1
 ]).
-
--define(UDT, 16#09).
--define(UDTS, 16#0a).
--define(XUDT, 16#11).
--define(XUDTS, 16#12).
--define(LUDT, 16#13).
--define(LUDTS, 16#14).
 
 -spec encode(map()) -> {ok, binary()} | {error, term()}.
 encode(#{type := _Type} = Message) ->
@@ -44,7 +39,7 @@ decode(Binary) ->
 
 -spec decode(binary(), itu | ansi) -> {ok, map()} | {error, term()}.
 decode(
-    <<?UDT, ProtocolClass:8, P1:8, P2:8, P3:8, _/binary>> = Binary,
+    <<?STP_SCCP_UDT, ProtocolClass:8, P1:8, P2:8, P3:8, _/binary>> = Binary,
     Variant
 ) when Variant =:= itu; Variant =:= ansi ->
     decode_short(
@@ -52,7 +47,7 @@ decode(
         [{2, P1}, {3, P2}, {4, P3}], Binary, Variant
     );
 decode(
-    <<?UDTS, ReturnCause:8, P1:8, P2:8, P3:8, _/binary>> = Binary,
+    <<?STP_SCCP_UDTS, ReturnCause:8, P1:8, P2:8, P3:8, _/binary>> = Binary,
     Variant
 ) when Variant =:= itu; Variant =:= ansi ->
     decode_short(
@@ -60,7 +55,7 @@ decode(
         [{2, P1}, {3, P2}, {4, P3}], Binary, Variant
     );
 decode(
-    <<?XUDT, ProtocolClass:8, Hop:8,
+    <<?STP_SCCP_XUDT, ProtocolClass:8, Hop:8,
       P1:8, P2:8, P3:8, P4:8, _/binary>> = Binary,
     Variant
 ) when Variant =:= itu; Variant =:= ansi ->
@@ -69,7 +64,7 @@ decode(
         [{3, P1}, {4, P2}, {5, P3}, {6, P4}], Binary, Variant
     );
 decode(
-    <<?XUDTS, ReturnCause:8, Hop:8,
+    <<?STP_SCCP_XUDTS, ReturnCause:8, Hop:8,
       P1:8, P2:8, P3:8, P4:8, _/binary>> = Binary,
     Variant
 ) when Variant =:= itu; Variant =:= ansi ->
@@ -78,7 +73,7 @@ decode(
         [{3, P1}, {4, P2}, {5, P3}, {6, P4}], Binary, Variant
     );
 decode(
-    <<?LUDT, ProtocolClass:8, Hop:8,
+    <<?STP_SCCP_LUDT, ProtocolClass:8, Hop:8,
       P1:16/little, P2:16/little, P3:16/little, P4:16/little,
       _/binary>> = Binary,
     Variant
@@ -88,7 +83,7 @@ decode(
         [{4, P1}, {6, P2}, {8, P3}, {10, P4}], Binary, Variant
     );
 decode(
-    <<?LUDTS, ReturnCause:8, Hop:8,
+    <<?STP_SCCP_LUDTS, ReturnCause:8, Hop:8,
       P1:16/little, P2:16/little, P3:16/little, P4:16/little,
       _/binary>> = Binary,
     Variant
@@ -231,17 +226,17 @@ prepare_relay(Message) when is_map(Message) ->
     {ok, Message}.
 
 encode_message(udt, Message, Variant) ->
-    encode_short(?UDT, protocol_class, Message, false, Variant);
+    encode_short(?STP_SCCP_UDT, protocol_class, Message, false, Variant);
 encode_message(udts, Message, Variant) ->
-    encode_short(?UDTS, return_cause, Message, false, Variant);
+    encode_short(?STP_SCCP_UDTS, return_cause, Message, false, Variant);
 encode_message(xudt, Message, Variant) ->
-    encode_short(?XUDT, protocol_class, Message, true, Variant);
+    encode_short(?STP_SCCP_XUDT, protocol_class, Message, true, Variant);
 encode_message(xudts, Message, Variant) ->
-    encode_short(?XUDTS, return_cause, Message, true, Variant);
+    encode_short(?STP_SCCP_XUDTS, return_cause, Message, true, Variant);
 encode_message(ludt, Message, Variant) ->
-    encode_long(?LUDT, protocol_class, Message, Variant);
+    encode_long(?STP_SCCP_LUDT, protocol_class, Message, Variant);
 encode_message(ludts, Message, Variant) ->
-    encode_long(?LUDTS, return_cause, Message, Variant);
+    encode_long(?STP_SCCP_LUDTS, return_cause, Message, Variant);
 encode_message(Type, _Message, _Variant) ->
     error({unsupported_sccp_message_type, Type}).
 

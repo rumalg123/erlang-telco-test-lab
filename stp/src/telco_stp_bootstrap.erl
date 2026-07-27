@@ -1,6 +1,8 @@
 -module(telco_stp_bootstrap).
 -behaviour(gen_server).
 
+-include("telco_stp.hrl").
+
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
@@ -8,11 +10,11 @@ start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
 init([]) ->
-    Links = application:get_env(telco_stp, links, []),
-    Routes = application:get_env(telco_stp, routes, []),
-    GttRules = application:get_env(telco_stp, gtt_rules, []),
-    Listeners = application:get_env(telco_stp, listeners, []),
-    Faults = application:get_env(telco_stp, fault_profile, #{}),
+    Links = application:get_env(?STP_APP, ?STP_ENV_LINKS, []),
+    Routes = application:get_env(?STP_APP, ?STP_ENV_ROUTES, []),
+    GttRules = application:get_env(?STP_APP, ?STP_ENV_GTT_RULES, []),
+    Listeners = application:get_env(?STP_APP, ?STP_ENV_LISTENERS, []),
+    Faults = application:get_env(?STP_APP, ?STP_ENV_FAULT_PROFILE, #{}),
     ok = load_links(Links),
     ok = load_routes(Routes),
     ok = load_gtt_rules(GttRules),
