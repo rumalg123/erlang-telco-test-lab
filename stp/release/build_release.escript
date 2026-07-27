@@ -127,26 +127,22 @@ build_target(
             "telco_stp-" ++ ReleaseVsn ++ ".tar.gz"
         )
     ),
-    ok = copy_file(
-        filename:join(Work, "telco_stp.script"),
-        filename:join(ReleaseDir, "start.script")
-    ),
-    ok = copy_file(
-        filename:join(Work, "start_clean.boot"),
-        filename:join(ReleaseDir, "start_clean.boot")
-    ),
-    ok = copy_file(
-        filename:join(Work, "start_clean.script"),
-        filename:join(ReleaseDir, "start_clean.script")
-    ),
-    ok = copy_file(
-        VmArgs,
-        filename:join(ReleaseDir, "vm.args")
-    ),
-    ok = copy_file(
-        Launcher,
-        filename:join([OutputRoot, "bin", "telco_stp"])
-    ),
+    ok = copy_files([
+        {
+            filename:join(Work, "telco_stp.script"),
+            filename:join(ReleaseDir, "start.script")
+        },
+        {
+            filename:join(Work, "start_clean.boot"),
+            filename:join(ReleaseDir, "start_clean.boot")
+        },
+        {
+            filename:join(Work, "start_clean.script"),
+            filename:join(ReleaseDir, "start_clean.script")
+        },
+        {VmArgs, filename:join(ReleaseDir, "vm.args")},
+        {Launcher, filename:join([OutputRoot, "bin", "telco_stp"])}
+    ]),
     ok = make_executable(
         filename:join([OutputRoot, "bin", "telco_stp"])
     ),
@@ -283,6 +279,14 @@ copy_file(Source, Destination) ->
         {error, Reason} ->
             error({copy_failed, Source, Destination, Reason})
     end.
+
+copy_files(Files) ->
+    lists:foreach(
+        fun({Source, Destination}) ->
+            ok = copy_file(Source, Destination)
+        end,
+        Files
+    ).
 
 write_term(Path, Term) ->
     ok = filelib:ensure_dir(Path),
