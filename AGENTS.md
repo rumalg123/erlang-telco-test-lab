@@ -1,57 +1,190 @@
-# Repository Guidelines
+# Code Quality & Refactoring
 
-## Project Structure & Module Organization
+## Guiding Principles
 
-This is a component-based Erlang telecom lab. The implemented component is
-`stp/`, with OTP source in `stp/src/`, deterministic tests in `stp/test/`,
-operator configuration in `stp/config/`, deployment state in `stp/deploy/`,
-and STP-specific design notes in `stp/docs/`. `msc/`, `smsc/`, and `hlr/` are
-scaffolded components with the same `src/`, `test/`, `config/`, and `README.md`
-layout. Put shared protocol contracts and test utilities in `common/` only
-after at least two components need them. Cross-component topologies, fixtures,
-scenarios, and generated artifacts belong in `lab/`.
+This repository is intended to become a production-grade telecom platform.
+Every change should improve maintainability without changing behaviour.
 
-## Build, Test, and Development Commands
+Always follow:
 
-- `.\build.cmd -Test`: builds all implemented components and runs tests.
-- `.\build.cmd stp -Test`: builds STP and runs the current STP test suite.
-- `.\build.cmd stp`: compiles STP without running tests.
-- `.\start-lab.cmd`: starts the current lab topology, presently STP only.
-- `./stp/build-release-linux.sh`: builds the Linux OTP release; run on Linux
-  with OTP 29 and kernel SCTP support for real SCTP interop.
+- DRY (Don't Repeat Yourself)
+- SOLID
+- KISS
+- YAGNI
+- Single Source of Truth
 
-The Windows scripts expect Erlang/OTP 29 at `C:\Program Files\Erlang OTP` or
-via `ERLANG_HOME`.
+Prefer fixing root causes over adding workarounds.
 
-## Coding Style & Naming Conventions
+---
 
-Erlang modules use the `telco_stp_*` prefix for STP internals and expose public
-APIs through `telco_stp.erl`. Keep functions small, add `-spec` declarations
-for exported APIs, and follow the existing four-space continuation style.
-Compilation uses `-Werror`, so fix warnings instead of suppressing them.
-Configuration examples use descriptive names such as
-`production-peer.example.config`.
+## Required Refactoring
 
-## Testing Guidelines
+Whenever modifying existing code, actively look for opportunities to remove technical debt.
 
-Tests are plain Erlang modules under each component's `test/` directory; STP
-tests are named `telco_stp_*_tests.erl` and are run by
-`telco_stp_test_runner`. Add focused deterministic tests for routing, protocol
-codec, state-machine, and failure-path changes. Run `.\build.cmd stp -Test`
-before submitting STP changes; run `.\build.cmd -Test` when touching root
-scripts, shared code, or cross-component layout.
+### Duplicate Code
 
-## Commit & Pull Request Guidelines
+- Never duplicate logic.
+- Extract reusable code into shared modules or helper functions.
+- If similar logic exists more than once, consolidate it.
 
-The existing history uses short, direct commit subjects such as
-`gitignore intellij .iml`. Prefer concise imperative subjects that identify the
-changed area, for example `stp add m3ua error test`. Pull requests should
-describe behavior changes, list verification commands, link related issues or
-roadmap items, and include screenshots or logs only when UI, console, or
-deployment behavior changes.
+### Magic Numbers
 
-## Security & Configuration Tips
+Replace unexplained numeric literals with named constants or macros.
 
-Do not commit generated captures, subscriber payloads, secrets, Erlang cookies,
-or local deployment logs. Keep production peer examples sanitized and document
-new `sys.config` fields in `stp/config/README.md`.
+Examples include:
+
+- Timeouts
+- Retry counts
+- SCTP parameters
+- SCCP values
+- TCAP values
+- MAP operation codes
+- Buffer sizes
+- Ports
+- Protocol identifiers
+
+### Repeated Literals
+
+Avoid repeating:
+
+- atoms
+- strings
+- binaries
+- protocol names
+- log messages
+- error messages
+
+Define them once and reuse them.
+
+### Configuration
+
+Never hardcode:
+
+- IP addresses
+- Ports
+- Timeouts
+- Paths
+- Feature flags
+- Operator-specific values
+
+Move them into configuration whenever practical.
+
+### State Values
+
+Centralize repeated state values, enums, atoms and protocol constants into shared definitions.
+
+### Functions
+
+Prefer:
+
+- small functions
+- single responsibility
+- descriptive names
+
+Avoid:
+
+- deeply nested case statements
+- long if/case chains
+- duplicated pattern matching
+- excessive boolean flags
+
+### Dead Code
+
+Remove:
+
+- unused functions
+- unused variables
+- unreachable code
+- obsolete comments
+- commented-out code
+
+Never leave dead code behind.
+
+---
+
+## Behaviour Preservation
+
+Refactoring must never change externally observable behaviour.
+
+Maintain:
+
+- protocol compatibility
+- binary compatibility
+- timing characteristics where applicable
+- public APIs
+
+Run existing tests after refactoring.
+
+If tests are missing and practical, add them.
+
+---
+
+## Continuous Improvement
+
+Leave every touched file in a better state than you found it.
+
+When working in a file:
+
+- reduce duplication
+- simplify logic
+- improve naming
+- improve readability
+- reduce complexity
+- remove technical debt
+- improve maintainability
+
+Avoid cosmetic refactoring that creates unnecessary review noise.
+
+---
+
+## Large Changes
+
+For large refactors:
+
+- keep commits focused
+- group related changes
+- explain the motivation
+- explain any trade-offs
+
+If a refactoring is high risk, stop and explain why instead of guessing.
+
+---
+
+## Code Review Checklist
+
+Before considering a task complete, verify:
+
+- No duplicate code introduced
+- No new magic numbers
+- No unnecessary hardcoded literals
+- No dead code
+- No unnecessary complexity
+- No compiler warnings
+- All tests pass
+- Code remains idiomatic Erlang
+- Behaviour is unchanged
+
+# Preferred Workflow
+
+Before writing code:
+
+1. Understand the existing architecture.
+2. Search for existing implementations before creating new ones.
+3. Reuse existing abstractions whenever possible.
+4. Avoid introducing duplicate implementations.
+5. Prefer extending existing modules over creating new ones.
+
+When implementing:
+
+- Make the smallest correct change.
+- Keep changes reviewable.
+- Preserve backward compatibility.
+- Follow existing project conventions.
+
+After implementation:
+
+- Compile.
+- Run affected tests.
+- Remove dead code.
+- Eliminate duplication introduced during implementation.
+- Verify no warnings remain.
