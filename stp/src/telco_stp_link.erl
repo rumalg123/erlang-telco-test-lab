@@ -1096,12 +1096,7 @@ receive_m2pa_mtp3(Fsn, Binary, Data) ->
                     },
                     ReceivedM2pa = M2pa#{rx_fsn => Fsn},
                     ReceivedData = Data#{m2pa => ReceivedM2pa},
-                    telco_stp_dispatcher:ingress(
-                        maps:get(name, Data), Transfer
-                    ),
-                    telco_stp_metrics:increment(
-                        {m2pa, user_data, received}
-                    ),
+                    _ = handle_m2pa_mtp3_transfer(Transfer, ReceivedData),
                     case send_m2pa_ack(ReceivedData) of
                         {ok, AckedData} ->
                             {keep_state, AckedData};
@@ -1128,6 +1123,87 @@ receive_m2pa_mtp3(Fsn, Binary, Data) ->
                 {error, _Reason, FailedData} ->
                     {keep_state, FailedData}
             end
+    end.
+
+handle_m2pa_mtp3_transfer(
+    #{si := ?STP_MTP3_SI_SNMM, payload := Payload} = Transfer,
+    Data
+) ->
+    Variant = maps:get(point_code_variant, Transfer),
+    case telco_stp_snmm:decode(Variant, Payload) of
+        {ok, Snmm} ->
+            handle_m2pa_snmm(Snmm, Transfer, Data);
+        {error, Reason} ->
+            telco_stp_metrics:increment({snmm, decode_error}),
+            raise_link_alarm(
+                snmm_decode, warning,
+                #{reason => Reason, variant => Variant}, Data
+            ),
+            {error, Reason}
+    end;
+handle_m2pa_mtp3_transfer(Transfer, Data) ->
+    telco_stp_dispatcher:ingress(maps:get(name, Data), Transfer),
+    telco_stp_metrics:increment({m2pa, user_data, received}),
+    ok.
+
+handle_m2pa_snmm(#{type := Type} = Snmm, Transfer, Data)
+        when Type =:= tfp; Type =:= tfr; Type =:= tfa;
+             Type =:= tfc; Type =:= upu ->
+    Status = snmm_destination_status(Snmm),
+    Destination = maps:get(affected_destination, Snmm),
+    Metadata = snmm_destination_metadata(Snmm, Transfer),
+    Result = telco_stp_route_table:set_destination_state(
+        maps:get(name, Data), Status, [{0, Destination}], Metadata
+    ),
+    case Result of
+        ok ->
+            telco_stp_metrics:increment({snmm, Type}),
+            clear_link_alarm(snmm_decode, #{reason => valid_snmm}, Data),
+            ok;
+        {error, Reason} ->
+            telco_stp_metrics:increment({snmm, invalid}),
+            raise_link_alarm(
+                snmm_update, warning, #{reason => Reason, type => Type}, Data
+            ),
+            {error, Reason}
+    end;
+handle_m2pa_snmm(#{type := Type}, _Transfer, _Data)
+        when Type =:= rst; Type =:= rsr ->
+    telco_stp_metrics:increment({snmm, Type}),
+    ok;
+handle_m2pa_snmm(#{type := Type}, _Transfer, _Data) ->
+    telco_stp_metrics:increment({snmm, ignored, Type}),
+    ok.
+
+snmm_destination_status(#{type := tfp}) -> unavailable;
+snmm_destination_status(#{type := tfr}) -> restricted;
+snmm_destination_status(#{type := tfa}) -> available;
+snmm_destination_status(#{type := tfc, congestion_status := 0}) -> available;
+snmm_destination_status(#{type := tfc}) -> congested;
+snmm_destination_status(#{type := upu}) -> user_unavailable.
+
+snmm_destination_metadata(#{type := Type} = Snmm, Transfer) ->
+    Base = #{
+        source => q704_snmm,
+        snmm_type => Type,
+        opc => maps:get(opc, Transfer),
+        network_indicator => maps:get(ni, Transfer),
+        point_code_variant => maps:get(point_code_variant, Transfer)
+    },
+    WithCongestion =
+        case maps:find(congestion_status, Snmm) of
+            {ok, 0} -> Base;
+            {ok, Level} -> Base#{congestion => min(3, max(1, Level))};
+            error -> Base
+        end,
+    case maps:find(user_part, Snmm) of
+        {ok, UserPart} ->
+            WithCongestion#{
+                user_part => UserPart,
+                cause => maps:get(unavailability_cause, Snmm)
+            };
+        error ->
+            WithCongestion
     end.
 
 send_m2pa_transfer(Message, Data) ->

@@ -18,7 +18,8 @@ item complete without attaching the corresponding external evidence.
 - Deterministic suite: 63 passing tests.
 - Implemented core: M3UA ASP/SGP, SSNM, RKM, M2PA basic link procedures,
   ITU/ANSI MTP3 labels, ITU SLTM/SLTA response, connectionless SCCP, bounded
-  reassembly, SCMG state, chained GTT, routing/failover, RBAC/audit,
+  reassembly, SCMG state, chained GTT, routing/failover, Q.704 SNMM codec
+  and basic M2PA transfer-management route-state ingestion, RBAC/audit,
   Prometheus text, PCAPNG trace, and manual warm-standby HA.
 - Baseline command: `.\build.cmd stp -Test`.
 
@@ -57,6 +58,14 @@ Acceptance:
 - inhibit/uninhibit collision and timer-expiry tests;
 - Q.782/operator-equivalent scenario results;
 - support matrix updated only for the exact profile proven.
+
+Completed first slice:
+
+- Q.704 heading-code codec for CHM, ECM, FCM, TFM, RSM, MIM, TRM, DLM and UPU
+  message families;
+- deterministic ITU/ANSI round-trip and malformed-vector tests;
+- M2PA ingress handling for TFP, TFR, TFA, TFC and UPU into the existing
+  destination-state constraints.
 
 ## P0 — bounded ingress and overload control
 

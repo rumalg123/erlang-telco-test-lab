@@ -19,6 +19,7 @@ advanced_stp_test_() ->
         fun rkm_dynamic_registration_controls_live_routes/0,
         fun m3ua_management_errors_and_notifications/0,
         fun m2pa_alignment_sequence_ack_and_retrieval/0,
+        fun m2pa_snmm_transfer_management_controls_routes/0,
         fun itu_signalling_link_test_is_acknowledged_on_source_link/0,
         fun authenticated_rbac_management_is_hash_chained/0,
         fun durable_audit_chain_resumes_after_restart/0,
@@ -605,6 +606,55 @@ m2pa_alignment_sequence_ack_and_retrieval() ->
         maps:get(payload, receive_protocol_data(m2pa_egress))
     ).
 
+m2pa_snmm_transfer_management_controls_routes() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => snmm_m2pa_primary,
+        linkset => snmm_primary_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(snmm_m2pa_primary),
+    add_loopback(snmm_secondary, snmm_secondary_set, self()),
+    ok = telco_stp:add_route(#{
+        id => snmm_route,
+        dpc => 7100,
+        mask => 16#ffffff,
+        linksets => [snmm_primary_set, snmm_secondary_set]
+    }),
+    inject_m2pa_snmm(
+        snmm_m2pa_primary, 0,
+        #{type => tfp, affected_destination => 7100}
+    ),
+    _ = receive_m2pa_binary(snmm_m2pa_primary),
+    await_destination_status(snmm_m2pa_primary, 7100, unavailable, 100),
+    ?assertMatch(
+        {ok, #{link := snmm_secondary}},
+        telco_stp:transfer(sample_transfer(7100, <<"SNMM-TFP">>))
+    ),
+    ?assertEqual(
+        <<"SNMM-TFP">>,
+        maps:get(payload, receive_protocol_data(snmm_secondary))
+    ),
+    inject_m2pa_snmm(
+        snmm_m2pa_primary, 1,
+        #{type => tfa, affected_destination => 7100}
+    ),
+    _ = receive_m2pa_binary(snmm_m2pa_primary),
+    await_no_destination_status(snmm_m2pa_primary, 7100, 100),
+    ?assertMatch(
+        {ok, #{link := snmm_m2pa_primary}},
+        telco_stp:transfer(sample_transfer(7100, <<"SNMM-TFA">>))
+    ),
+    {1, UserBinary} = receive_m2pa_binary(snmm_m2pa_primary),
+    {ok, #{type := user_data, mtp3 := EncodedMtp3}} =
+        telco_stp_m2pa:decode(UserBinary),
+    {ok, RestoredTransfer} = telco_stp_mtp3:decode(itu, EncodedMtp3),
+    ?assertEqual(<<"SNMM-TFA">>, maps:get(payload, RestoredTransfer)).
+
 itu_signalling_link_test_is_acknowledged_on_source_link() ->
     add_loopback(slt_peer, slt_set, self()),
     {ok, Sltm} = telco_stp_slt:encode(#{
@@ -1127,6 +1177,37 @@ inject_m2pa_status(Link, Status, Stream) ->
         filler => <<>>
     }),
     ok = telco_stp:inject_m2pa(Link, Stream, Binary).
+
+establish_m2pa(Link) ->
+    {0, LocalAlignment} = receive_m2pa_binary(Link),
+    {ok, #{status := alignment}} =
+        telco_stp_m2pa:decode(LocalAlignment),
+    inject_m2pa_status(Link, alignment, 0),
+    {0, LocalProving} = receive_m2pa_binary(Link),
+    {ok, #{status := proving_normal}} =
+        telco_stp_m2pa:decode(LocalProving),
+    inject_m2pa_status(Link, proving_normal, 0),
+    {0, LocalReady} = receive_m2pa_binary(Link),
+    {ok, #{status := ready}} = telco_stp_m2pa:decode(LocalReady),
+    inject_m2pa_status(Link, ready, 0),
+    {0, ReadyReply} = receive_m2pa_binary(Link),
+    {ok, #{status := ready}} = telco_stp_m2pa:decode(ReadyReply),
+    await_link_state(Link, active, 100).
+
+inject_m2pa_snmm(Link, Fsn, Snmm) ->
+    {ok, SnmmPayload} = telco_stp_snmm:encode(itu, Snmm),
+    {ok, Mtp3} = telco_stp_mtp3:encode(
+        itu,
+        (sample_transfer(1, SnmmPayload))#{si => 0}
+    ),
+    {ok, M2pa} = telco_stp_m2pa:encode(#{
+        type => user_data,
+        bsn => 16#ffffff,
+        fsn => Fsn,
+        priority => 0,
+        mtp3 => Mtp3
+    }),
+    ok = telco_stp:inject_m2pa(Link, 1, M2pa).
 
 collect_ssnm(_Link, 0, Acc) ->
     lists:reverse(Acc);
