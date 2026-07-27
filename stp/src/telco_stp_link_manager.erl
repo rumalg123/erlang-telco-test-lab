@@ -253,24 +253,14 @@ validate_config(Config) when is_map(Config) ->
             ),
             Rkm = maps:get(rkm, Config, undefined),
             case valid_transport(Module) andalso
-                 is_integer(Weight) andalso Weight > 0 andalso Weight =< 100 andalso
-                 is_integer(HeartbeatInterval) andalso
-                 HeartbeatInterval >= 0 andalso
-                 HeartbeatInterval =< ?STP_MAX_MILLISECONDS andalso
-                 is_integer(HeartbeatTimeout) andalso
-                 HeartbeatTimeout > 0 andalso
-                 HeartbeatTimeout =< ?STP_MAX_MILLISECONDS andalso
-                 (
-                     HeartbeatAction =:= inactive orelse
-                     HeartbeatAction =:= reconnect
-                 ) andalso
-                 (SccpVariant =:= itu orelse SccpVariant =:= ansi) andalso
-                 (
-                     PointCodeVariant =:= itu orelse
-                     PointCodeVariant =:= ansi
-                 ) andalso
+                 valid_weight(Weight) andalso
+                 valid_heartbeat_interval(HeartbeatInterval) andalso
+                 valid_heartbeat_timeout(HeartbeatTimeout) andalso
+                 valid_heartbeat_action(HeartbeatAction) andalso
+                 valid_point_code_variant(SccpVariant) andalso
+                 valid_point_code_variant(PointCodeVariant) andalso
                  is_boolean(SccpReassembly) andalso
-                 (Adaptation =:= m3ua orelse Adaptation =:= m2pa) andalso
+                 valid_adaptation(Adaptation) andalso
                  valid_rkm_config(Rkm) andalso
                  valid_adaptation_config(Adaptation, Rkm, Config) of
                 true ->
@@ -289,6 +279,27 @@ validate_config(Config) when is_map(Config) ->
     end;
 validate_config(Config) ->
     {error, {invalid_link_config, Config}}.
+
+valid_weight(Value) ->
+    telco_stp_codec:in_range(Value, 1, ?STP_PERCENT_SCALE).
+
+valid_heartbeat_interval(Value) ->
+    telco_stp_codec:in_range(Value, 0, ?STP_MAX_MILLISECONDS).
+
+valid_heartbeat_timeout(Value) ->
+    telco_stp_codec:in_range(Value, 1, ?STP_MAX_MILLISECONDS).
+
+valid_heartbeat_action(inactive) -> true;
+valid_heartbeat_action(reconnect) -> true;
+valid_heartbeat_action(_Action) -> false.
+
+valid_point_code_variant(itu) -> true;
+valid_point_code_variant(ansi) -> true;
+valid_point_code_variant(_Variant) -> false.
+
+valid_adaptation(m3ua) -> true;
+valid_adaptation(m2pa) -> true;
+valid_adaptation(_Adaptation) -> false.
 
 valid_rkm_config(undefined) ->
     true;
