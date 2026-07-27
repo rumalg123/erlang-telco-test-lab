@@ -33,7 +33,7 @@ From the repository root:
 ```
 
 The build locates `C:\Program Files\Erlang OTP`, requires OTP release 29,
-compiles with warnings as errors, and currently runs 76 deterministic tests.
+compiles with warnings as errors, and currently runs 77 deterministic tests.
 Real SCTP interop must run on Linux or another target host with kernel SCTP;
 the Windows suite uses deterministic loopback transport.
 

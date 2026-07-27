@@ -1161,10 +1161,10 @@ handle_m2pa_mtp3_transfer(Transfer, Data) ->
     ok.
 
 handle_m2pa_snmm(#{type := Type} = Snmm, Transfer, Data)
-        when Type =:= coo; Type =:= xco; Type =:= cbd ->
+        when Type =:= coo; Type =:= xco; Type =:= eco; Type =:= cbd ->
     handle_m2pa_changeover_snmm(Snmm, Transfer, Data);
 handle_m2pa_snmm(#{type := Type} = Snmm, _Transfer, Data)
-        when Type =:= coa; Type =:= xca; Type =:= cba ->
+        when Type =:= coa; Type =:= xca; Type =:= eca; Type =:= cba ->
     M2pa = maps:get(m2pa, Data),
     NetworkManagement = maps:get(network_management, M2pa, #{}),
     Updated = NetworkManagement#{
@@ -1250,6 +1250,19 @@ handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
 
 retrieve_for_changeover(#{type := cbd}, Data) ->
     {[], Data};
+retrieve_for_changeover(#{type := eco}, Data) ->
+    case retrieve_m2pa_messages(undefined, Data) of
+        {ok, Messages, NewData} ->
+            {Messages, NewData};
+        {error, Reason} ->
+            M2pa = maps:get(m2pa, Data),
+            NetworkManagement = maps:get(network_management, M2pa, #{}),
+            {[], Data#{m2pa => M2pa#{
+                network_management => NetworkManagement#{
+                    last_changeover_retrieval_error => Reason
+                }
+            }}}
+    end;
 retrieve_for_changeover(#{fsn := Fsn}, Data) ->
     M2pa = maps:get(m2pa, Data),
     AcknowledgedData = Data#{m2pa => acknowledge_m2pa(Fsn, M2pa)},
@@ -1289,6 +1302,8 @@ reroute_retrieved_message(SourceLink, #{fsn := Fsn, transfer := Transfer}) ->
 
 changeover_state(cbd) ->
     normal;
+changeover_state(eco) ->
+    emergency_changeover;
 changeover_state(_Type) ->
     changeover.
 
@@ -1301,6 +1316,8 @@ changeover_acknowledgement(#{type := coo, fsn := Fsn}) ->
     #{type => coa, fsn => Fsn};
 changeover_acknowledgement(#{type := xco, fsn := Fsn}) ->
     #{type => xca, fsn => Fsn};
+changeover_acknowledgement(#{type := eco}) ->
+    #{type => eca};
 changeover_acknowledgement(#{type := cbd, changeback_code := Code}) ->
     #{type => cba, changeback_code => Code}.
 

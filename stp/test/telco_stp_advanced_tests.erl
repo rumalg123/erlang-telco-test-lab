@@ -33,6 +33,7 @@ advanced_stp_test_() ->
         fun m2pa_changeover_changeback_acknowledgements/0,
         fun m2pa_changeover_retrieves_and_reroutes_unacked_msus/0,
         fun m2pa_changeback_restores_primary_traffic/0,
+        fun m2pa_emergency_changeover_reroutes_all_unacked_msus/0,
         fun itu_signalling_link_test_is_acknowledged_on_source_link/0,
         fun authenticated_rbac_management_is_hash_chained/0,
         fun durable_audit_chain_resumes_after_restart/0,
@@ -822,6 +823,70 @@ m2pa_changeback_restores_primary_traffic() ->
         network_management, maps:get(m2pa, Link)
     ),
     ?assertEqual(normal, maps:get(changeover_state, NetworkManagement)).
+
+m2pa_emergency_changeover_reroutes_all_unacked_msus() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => eco_primary,
+        linkset => eco_primary_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(eco_primary),
+    add_loopback(eco_secondary, eco_secondary_set, self()),
+    ok = telco_stp:add_route(#{
+        id => eco_route,
+        dpc => 7400,
+        mask => 16#ffffff,
+        linksets => [eco_primary_set, eco_secondary_set]
+    }),
+    ?assertMatch(
+        {ok, #{link := eco_primary}},
+        telco_stp:transfer(sample_transfer(7400, <<"ECO-FIRST">>))
+    ),
+    {1, FirstBinary} = receive_m2pa_binary(eco_primary),
+    {ok, #{type := user_data, fsn := 0}} =
+        telco_stp_m2pa:decode(FirstBinary),
+    ?assertMatch(
+        {ok, #{link := eco_primary}},
+        telco_stp:transfer(sample_transfer(7400, <<"ECO-SECOND">>))
+    ),
+    {1, SecondBinary} = receive_m2pa_binary(eco_primary),
+    {ok, #{type := user_data, fsn := 1}} =
+        telco_stp_m2pa:decode(SecondBinary),
+    inject_m2pa_snmm(eco_primary, 0, #{type => eco}),
+    ?assertEqual(#{type => eca}, receive_m2pa_snmm(eco_primary)),
+    Rerouted = lists:sort([
+        maps:get(payload, receive_protocol_data(eco_secondary)),
+        maps:get(payload, receive_protocol_data(eco_secondary))
+    ]),
+    ?assertEqual([<<"ECO-FIRST">>, <<"ECO-SECOND">>], Rerouted),
+    ?assertMatch(
+        {ok, #{link := eco_secondary}},
+        telco_stp:transfer(sample_transfer(7400, <<"ECO-FUTURE">>))
+    ),
+    ?assertEqual(
+        <<"ECO-FUTURE">>,
+        maps:get(payload, receive_protocol_data(eco_secondary))
+    ),
+    [Link] = [
+        Item || Item <- telco_stp:links(),
+                maps:get(name, Item) =:= eco_primary
+    ],
+    M2pa = maps:get(m2pa, Link),
+    NetworkManagement = maps:get(network_management, M2pa),
+    ?assertEqual(1, maps:get(unacked, M2pa)),
+    ?assertMatch(
+        #{type := eco, retrieved := 2, retrieved_fsns := [0, 1]},
+        maps:get(last_changeover, NetworkManagement)
+    ),
+    ?assertEqual(
+        emergency_changeover,
+        maps:get(changeover_state, NetworkManagement)
+    ).
 
 itu_signalling_link_test_is_acknowledged_on_source_link() ->
     add_loopback(slt_peer, slt_set, self()),
