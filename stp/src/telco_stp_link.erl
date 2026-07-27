@@ -915,14 +915,10 @@ handle_m2pa_link_status(Message, Stream, State, Data) ->
     end.
 
 handle_m2pa_status(alignment, _State, Data) ->
-    case send_m2pa_status(proving_normal, 0, Data) of
-        {ok, SentData} ->
-            {next_state, proving, start_m2pa_proving(SentData)};
-        {error, Reason, FailedData} ->
-            m2pa_protocol_violation(
-                {proving_send_failed, Reason}, FailedData
-            )
-    end;
+    send_m2pa_status_transition(
+        proving_normal, 0, proving, Data, fun start_m2pa_proving/1,
+        proving_send_failed
+    );
 handle_m2pa_status(Status, _State, Data)
         when Status =:= proving_normal;
              Status =:= proving_emergency ->
@@ -930,14 +926,9 @@ handle_m2pa_status(Status, _State, Data)
 handle_m2pa_status(ready, active, Data) ->
     {keep_state, m2pa_in_service(Data)};
 handle_m2pa_status(ready, _State, Data) ->
-    case send_m2pa_status(ready, 0, Data) of
-        {ok, SentData} ->
-            {next_state, active, m2pa_in_service(SentData)};
-        {error, Reason, FailedData} ->
-            m2pa_protocol_violation(
-                {ready_send_failed, Reason}, FailedData
-            )
-    end;
+    send_m2pa_status_transition(
+        ready, 0, active, Data, fun m2pa_in_service/1, ready_send_failed
+    );
 handle_m2pa_status(busy, State, Data) ->
     raise_link_alarm(
         m2pa_busy, warning, #{reason => remote_busy}, Data
@@ -957,13 +948,10 @@ handle_m2pa_status(processor_recovered, _State, Data) ->
     clear_link_alarm(
         m2pa_processor, #{reason => remote_processor_recovered}, Data
     ),
-    case send_m2pa_status(ready, 1, Data#{congestion => 0}) of
-        {ok, SentData} -> {next_state, ready, SentData};
-        {error, Reason, FailedData} ->
-            m2pa_protocol_violation(
-                {processor_ready_send_failed, Reason}, FailedData
-            )
-    end;
+    send_m2pa_status_transition(
+        ready, 1, ready, Data#{congestion => 0}, fun identity/1,
+        processor_ready_send_failed
+    );
 handle_m2pa_status(out_of_service, _State, Data) ->
     raise_link_alarm(
         m2pa_status, major, #{reason => remote_out_of_service}, Data
@@ -1001,13 +989,9 @@ handle_m2pa_proving_complete(Token, Data) ->
                 proving_token => undefined,
                 local_status => ready
             }},
-            case send_m2pa_status(ready, 0, Cleared) of
-                {ok, SentData} -> {next_state, ready, SentData};
-                {error, Reason, FailedData} ->
-                    m2pa_protocol_violation(
-                        {ready_send_failed, Reason}, FailedData
-                    )
-            end;
+            send_m2pa_status_transition(
+                ready, 0, ready, Cleared, fun identity/1, ready_send_failed
+            );
         _ ->
             {keep_state, Data}
     end.
@@ -1524,6 +1508,19 @@ send_m2pa_status(Status, Stream, Data) ->
         Error ->
             Error
     end.
+
+send_m2pa_status_transition(
+    Status, Stream, NextState, Data, UpdateFun, FailureTag
+) ->
+    case send_m2pa_status(Status, Stream, Data) of
+        {ok, SentData} ->
+            {next_state, NextState, UpdateFun(SentData)};
+        {error, Reason, FailedData} ->
+            m2pa_protocol_violation({FailureTag, Reason}, FailedData)
+    end.
+
+identity(Value) ->
+    Value.
 
 send_m2pa_packet(Stream, Packet, Data) ->
     case telco_stp_m2pa:encode(Packet) of
