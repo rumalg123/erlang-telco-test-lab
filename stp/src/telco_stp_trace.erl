@@ -207,7 +207,7 @@ export_file(Path0, Packets) ->
 
 section_header_block() ->
     block(?STP_PCAPNG_SHB_TYPE, <<
-        16#1a2b3c4d:32/little,
+        ?STP_PCAPNG_BYTE_ORDER_MAGIC:32/little,
         1:16/little, 0:16/little,
         ?STP_PCAPNG_UNSPECIFIED_SECTION_LENGTH:64/little
     >>).
@@ -237,9 +237,15 @@ enhanced_packet_block(Packet) ->
 
 trace_payload(Packet) ->
     Direction =
-        case maps:get(direction, Packet) of rx -> 0; tx -> 1 end,
+        case maps:get(direction, Packet) of
+            rx -> ?STP_TRACE_DIRECTION_RX;
+            tx -> ?STP_TRACE_DIRECTION_TX
+        end,
     Adaptation =
-        case maps:get(adaptation, Packet) of m3ua -> 3; m2pa -> 5 end,
+        case maps:get(adaptation, Packet) of
+            m3ua -> ?STP_M3UA_PPID;
+            m2pa -> ?STP_M2PA_PPID
+        end,
     Stream = maps:get(stream, Packet),
     Link = iolist_to_binary(io_lib:format("~0p", [
         maps:get(link, Packet)
