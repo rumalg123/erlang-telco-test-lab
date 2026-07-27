@@ -12,6 +12,50 @@ heading_allocation_test() ->
     ?assertEqual({7, 1}, telco_stp_snmm:heading(tra)),
     ?assertEqual({11, 1}, telco_stp_snmm:heading(upu)).
 
+all_known_types_roundtrip_test() ->
+    lists:foreach(
+        fun(Message) ->
+            {ok, Binary} = telco_stp_snmm:encode(itu, Message),
+            ?assertEqual({ok, Message}, telco_stp_snmm:decode(itu, Binary))
+        end,
+        [
+            #{type => coo, fsn => 1},
+            #{type => coa, fsn => 1},
+            #{type => xco, fsn => 1},
+            #{type => xca, fsn => 1},
+            #{type => cbd, changeback_code => 1},
+            #{type => cba, changeback_code => 1},
+            #{type => eco},
+            #{type => eca},
+            #{type => rct, affected_destination => 1},
+            #{type => tfc, affected_destination => 1, congestion_status => 1},
+            #{type => tfp, affected_destination => 1},
+            #{type => tfr, affected_destination => 1},
+            #{type => tfa, affected_destination => 1},
+            #{type => rst, affected_destination => 1},
+            #{type => rsr, affected_destination => 1},
+            #{type => lin},
+            #{type => lun},
+            #{type => lia},
+            #{type => lua},
+            #{type => lid},
+            #{type => lfu},
+            #{type => llt},
+            #{type => lrt},
+            #{type => tra},
+            #{type => dlc},
+            #{type => css},
+            #{type => cns},
+            #{type => cnp},
+            #{
+                type => upu,
+                affected_destination => 1,
+                user_part => 1,
+                unavailability_cause => 1
+            }
+        ]
+    ).
+
 changeover_roundtrip_test() ->
     Message = #{type => coo, fsn => 16#aa},
     {ok, Binary} = telco_stp_snmm:encode(itu, Message),

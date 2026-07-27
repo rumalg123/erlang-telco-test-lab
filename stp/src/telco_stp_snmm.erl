@@ -53,67 +53,55 @@ decode(Variant, _Binary) ->
     {error, {unsupported_snmm_variant, Variant}}.
 
 -spec heading(message_type()) -> {1..15, 1..15}.
-heading(coo) -> {?STP_SNMM_H0_CHM, 1};
-heading(coa) -> {?STP_SNMM_H0_CHM, 2};
-heading(xco) -> {?STP_SNMM_H0_CHM, 3};
-heading(xca) -> {?STP_SNMM_H0_CHM, 4};
-heading(cbd) -> {?STP_SNMM_H0_CHM, 5};
-heading(cba) -> {?STP_SNMM_H0_CHM, 6};
-heading(eco) -> {?STP_SNMM_H0_ECM, 1};
-heading(eca) -> {?STP_SNMM_H0_ECM, 2};
-heading(rct) -> {?STP_SNMM_H0_FCM, 1};
-heading(tfc) -> {?STP_SNMM_H0_FCM, 2};
-heading(tfp) -> {?STP_SNMM_H0_TFM, 1};
-heading(tfr) -> {?STP_SNMM_H0_TFM, 3};
-heading(tfa) -> {?STP_SNMM_H0_TFM, 5};
-heading(rst) -> {?STP_SNMM_H0_RSM, 1};
-heading(rsr) -> {?STP_SNMM_H0_RSM, 2};
-heading(lin) -> {?STP_SNMM_H0_MIM, 1};
-heading(lun) -> {?STP_SNMM_H0_MIM, 2};
-heading(lia) -> {?STP_SNMM_H0_MIM, 3};
-heading(lua) -> {?STP_SNMM_H0_MIM, 4};
-heading(lid) -> {?STP_SNMM_H0_MIM, 5};
-heading(lfu) -> {?STP_SNMM_H0_MIM, 6};
-heading(llt) -> {?STP_SNMM_H0_MIM, 7};
-heading(lrt) -> {?STP_SNMM_H0_MIM, 8};
-heading(tra) -> {?STP_SNMM_H0_TRM, 1};
-heading(dlc) -> {?STP_SNMM_H0_DLM, 1};
-heading(css) -> {?STP_SNMM_H0_DLM, 2};
-heading(cns) -> {?STP_SNMM_H0_DLM, 3};
-heading(cnp) -> {?STP_SNMM_H0_DLM, 4};
-heading(upu) -> {?STP_SNMM_H0_UPU, 1};
-heading(Type) -> error({unsupported_snmm_type, Type}).
+heading(Type) ->
+    case lists:keyfind(Type, 1, snmm_headings()) of
+        {Type, H0, H1} -> {H0, H1};
+        false -> error({unsupported_snmm_type, Type})
+    end.
 
-type_name(?STP_SNMM_H0_CHM, 1) -> {ok, coo};
-type_name(?STP_SNMM_H0_CHM, 2) -> {ok, coa};
-type_name(?STP_SNMM_H0_CHM, 3) -> {ok, xco};
-type_name(?STP_SNMM_H0_CHM, 4) -> {ok, xca};
-type_name(?STP_SNMM_H0_CHM, 5) -> {ok, cbd};
-type_name(?STP_SNMM_H0_CHM, 6) -> {ok, cba};
-type_name(?STP_SNMM_H0_ECM, 1) -> {ok, eco};
-type_name(?STP_SNMM_H0_ECM, 2) -> {ok, eca};
-type_name(?STP_SNMM_H0_FCM, 1) -> {ok, rct};
-type_name(?STP_SNMM_H0_FCM, 2) -> {ok, tfc};
-type_name(?STP_SNMM_H0_TFM, 1) -> {ok, tfp};
-type_name(?STP_SNMM_H0_TFM, 3) -> {ok, tfr};
-type_name(?STP_SNMM_H0_TFM, 5) -> {ok, tfa};
-type_name(?STP_SNMM_H0_RSM, 1) -> {ok, rst};
-type_name(?STP_SNMM_H0_RSM, 2) -> {ok, rsr};
-type_name(?STP_SNMM_H0_MIM, 1) -> {ok, lin};
-type_name(?STP_SNMM_H0_MIM, 2) -> {ok, lun};
-type_name(?STP_SNMM_H0_MIM, 3) -> {ok, lia};
-type_name(?STP_SNMM_H0_MIM, 4) -> {ok, lua};
-type_name(?STP_SNMM_H0_MIM, 5) -> {ok, lid};
-type_name(?STP_SNMM_H0_MIM, 6) -> {ok, lfu};
-type_name(?STP_SNMM_H0_MIM, 7) -> {ok, llt};
-type_name(?STP_SNMM_H0_MIM, 8) -> {ok, lrt};
-type_name(?STP_SNMM_H0_TRM, 1) -> {ok, tra};
-type_name(?STP_SNMM_H0_DLM, 1) -> {ok, dlc};
-type_name(?STP_SNMM_H0_DLM, 2) -> {ok, css};
-type_name(?STP_SNMM_H0_DLM, 3) -> {ok, cns};
-type_name(?STP_SNMM_H0_DLM, 4) -> {ok, cnp};
-type_name(?STP_SNMM_H0_UPU, 1) -> {ok, upu};
-type_name(H0, H1) -> {error, {unsupported_snmm_heading, H0, H1}}.
+type_name(H0, H1) ->
+    case lists:filter(
+        fun({_Type, CandidateH0, CandidateH1}) ->
+            CandidateH0 =:= H0 andalso CandidateH1 =:= H1
+        end,
+        snmm_headings()
+    ) of
+        [{Type, H0, H1}] -> {ok, Type};
+        [] -> {error, {unsupported_snmm_heading, H0, H1}}
+    end.
+
+snmm_headings() ->
+    [
+        {coo, ?STP_SNMM_H0_CHM, 1},
+        {coa, ?STP_SNMM_H0_CHM, 2},
+        {xco, ?STP_SNMM_H0_CHM, 3},
+        {xca, ?STP_SNMM_H0_CHM, 4},
+        {cbd, ?STP_SNMM_H0_CHM, 5},
+        {cba, ?STP_SNMM_H0_CHM, 6},
+        {eco, ?STP_SNMM_H0_ECM, 1},
+        {eca, ?STP_SNMM_H0_ECM, 2},
+        {rct, ?STP_SNMM_H0_FCM, 1},
+        {tfc, ?STP_SNMM_H0_FCM, 2},
+        {tfp, ?STP_SNMM_H0_TFM, 1},
+        {tfr, ?STP_SNMM_H0_TFM, 3},
+        {tfa, ?STP_SNMM_H0_TFM, 5},
+        {rst, ?STP_SNMM_H0_RSM, 1},
+        {rsr, ?STP_SNMM_H0_RSM, 2},
+        {lin, ?STP_SNMM_H0_MIM, 1},
+        {lun, ?STP_SNMM_H0_MIM, 2},
+        {lia, ?STP_SNMM_H0_MIM, 3},
+        {lua, ?STP_SNMM_H0_MIM, 4},
+        {lid, ?STP_SNMM_H0_MIM, 5},
+        {lfu, ?STP_SNMM_H0_MIM, 6},
+        {llt, ?STP_SNMM_H0_MIM, 7},
+        {lrt, ?STP_SNMM_H0_MIM, 8},
+        {tra, ?STP_SNMM_H0_TRM, 1},
+        {dlc, ?STP_SNMM_H0_DLM, 1},
+        {css, ?STP_SNMM_H0_DLM, 2},
+        {cns, ?STP_SNMM_H0_DLM, 3},
+        {cnp, ?STP_SNMM_H0_DLM, 4},
+        {upu, ?STP_SNMM_H0_UPU, 1}
+    ].
 
 encode_body(Type, _Variant, Message) when Type =:= coo; Type =:= coa ->
     <<(uint(maps:get(fsn, Message), 8, fsn)):8>>;
