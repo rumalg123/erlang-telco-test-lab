@@ -146,11 +146,11 @@ normalize(Config) when is_map(Config) ->
             max_bytes := MaxBytes,
             capture_payload := Capture,
             header_bytes := HeaderBytes
-        } when is_boolean(Enabled), is_integer(MaxPackets),
-               MaxPackets > 0, is_integer(MaxBytes), MaxBytes > 0,
-               is_boolean(Capture), is_integer(HeaderBytes),
-               HeaderBytes > 0 ->
-            {ok, Normalized};
+        } when is_boolean(Enabled), is_boolean(Capture) ->
+            case valid_trace_limits(MaxPackets, MaxBytes, HeaderBytes) of
+                true -> {ok, Normalized};
+                false -> {error, {invalid_trace_config, Config}}
+            end;
         _ ->
             {error, {invalid_trace_config, Config}}
     end;
@@ -158,10 +158,28 @@ normalize(Config) ->
     {error, {invalid_trace_config, Config}}.
 
 valid_packet(Direction, Adaptation, Stream) ->
-    (Direction =:= rx orelse Direction =:= tx) andalso
-    (Adaptation =:= m3ua orelse Adaptation =:= m2pa) andalso
-    is_integer(Stream) andalso Stream >= 0 andalso
-    Stream =< ?STP_MAX_SHORT_BYTES.
+    valid_direction(Direction) andalso
+    valid_adaptation(Adaptation) andalso
+    valid_stream(Stream).
+
+valid_positive(Value) ->
+    is_integer(Value) andalso Value > 0.
+
+valid_trace_limits(MaxPackets, MaxBytes, HeaderBytes) ->
+    valid_positive(MaxPackets) andalso
+    valid_positive(MaxBytes) andalso
+    valid_positive(HeaderBytes).
+
+valid_direction(rx) -> true;
+valid_direction(tx) -> true;
+valid_direction(_Direction) -> false.
+
+valid_adaptation(m3ua) -> true;
+valid_adaptation(m2pa) -> true;
+valid_adaptation(_Adaptation) -> false.
+
+valid_stream(Value) ->
+    telco_stp_codec:in_range(Value, 0, ?STP_MAX_SHORT_BYTES).
 
 enforce_limits(State) ->
     Config = maps:get(config, State),
@@ -208,7 +226,8 @@ export_file(Path0, Packets) ->
 section_header_block() ->
     block(?STP_PCAPNG_SHB_TYPE, <<
         ?STP_PCAPNG_BYTE_ORDER_MAGIC:32/little,
-        1:16/little, 0:16/little,
+        ?STP_PCAPNG_MAJOR_VERSION:16/little,
+        ?STP_PCAPNG_MINOR_VERSION:16/little,
         ?STP_PCAPNG_UNSPECIFIED_SECTION_LENGTH:64/little
     >>).
 
@@ -226,7 +245,7 @@ enhanced_packet_block(Packet) ->
     CapturedLength = byte_size(Captured),
     OriginalLength = maps:get(original_length, Packet) +
         CapturedLength - byte_size(maps:get(payload, Packet)),
-    PaddingLength = (4 - (CapturedLength rem 4)) rem 4,
+    PaddingLength = padding_length(CapturedLength),
     Body = <<
         0:32/little,
         High:32/little, Low:32/little,
@@ -251,12 +270,18 @@ trace_payload(Packet) ->
         maps:get(link, Packet)
     ])),
     Payload = maps:get(payload, Packet),
-    <<"TSTP", Direction:8, Adaptation:8, Stream:16/big,
+    <<?STP_TRACE_PAYLOAD_MAGIC/binary,
+      Direction:8, Adaptation:8, Stream:16/big,
       (byte_size(Link)):16/big, Link/binary, Payload/binary>>.
 
 block(Type, Body) ->
-    Length = 12 + byte_size(Body),
+    Length = ?STP_PCAPNG_BLOCK_OVERHEAD_BYTES + byte_size(Body),
     <<Type:32/little, Length:32/little, Body/binary, Length:32/little>>.
+
+padding_length(Size) ->
+    (?STP_PCAPNG_ALIGNMENT_BYTES -
+        (Size rem ?STP_PCAPNG_ALIGNMENT_BYTES)) rem
+        ?STP_PCAPNG_ALIGNMENT_BYTES.
 
 first_octets(Binary, Maximum) ->
     binary:part(Binary, 0, min(byte_size(Binary), Maximum)).
