@@ -47,6 +47,28 @@ known_asp_up_header_test() ->
     }),
     ?assertEqual(<<1, 0, 3, 1, 0, 0, 0, 8>>, Binary).
 
+known_classes_roundtrip_test() ->
+    lists:foreach(
+        fun({Class, ClassId}) ->
+            {ok, Binary} = telco_stp_m3ua:encode(#{
+                class => Class,
+                type => 1
+            }),
+            ?assertMatch(<<1, 0, ClassId:8, 1, 0, 0, 0, 8>>, Binary),
+            {ok, Message} = telco_stp_m3ua:decode(Binary),
+            ?assertEqual(Class, maps:get(class, Message)),
+            ?assertEqual(ClassId, maps:get(raw_class, Message))
+        end,
+        [
+            {management, 0},
+            {transfer, 1},
+            {ssnm, 2},
+            {aspsm, 3},
+            {asptm, 4},
+            {rkm, 9}
+        ]
+    ).
+
 unknown_parameter_preserved_test() ->
     {ok, Binary} = telco_stp_m3ua:encode(#{
         class => 200,

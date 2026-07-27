@@ -709,22 +709,29 @@ uint(Value, Bits, _Name)
 uint(Value, _Bits, Name) ->
     error({invalid_unsigned_integer, Name, Value}).
 
-class_id(management) -> 0;
-class_id(transfer) -> 1;
-class_id(ssnm) -> 2;
-class_id(aspsm) -> 3;
-class_id(asptm) -> 4;
-class_id(rkm) -> 9;
+class_id(Name) when is_atom(Name) ->
+    case lists:keyfind(Name, 1, class_ids()) of
+        {Name, Id} -> Id;
+        false -> error({invalid_message_class, Name})
+    end;
 class_id(Value) when is_integer(Value), Value >= 0, Value =< 255 -> Value;
 class_id(Value) -> error({invalid_message_class, Value}).
 
-class_name(0) -> management;
-class_name(1) -> transfer;
-class_name(2) -> ssnm;
-class_name(3) -> aspsm;
-class_name(4) -> asptm;
-class_name(9) -> rkm;
-class_name(Value) -> Value.
+class_name(Id) ->
+    case lists:keyfind(Id, 2, class_ids()) of
+        {Name, Id} -> Name;
+        false -> Id
+    end.
+
+class_ids() ->
+    [
+        {management, 0},
+        {transfer, 1},
+        {ssnm, 2},
+        {aspsm, 3},
+        {asptm, 4},
+        {rkm, 9}
+    ].
 
 type_id(_Class, Value) when is_integer(Value), Value >= 0, Value =< 255 -> Value;
 type_id(management, error) -> 0;
