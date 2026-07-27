@@ -34,6 +34,21 @@
 -define(STP_SCCP_LUDT, 16#13).
 -define(STP_SCCP_LUDTS, 16#14).
 
+%% MTP3 Signalling Network Management Message groups, Q.704 H0.
+-define(STP_SNMM_H0_CHM, 1).
+-define(STP_SNMM_H0_ECM, 2).
+-define(STP_SNMM_H0_FCM, 3).
+-define(STP_SNMM_H0_TFM, 4).
+-define(STP_SNMM_H0_RSM, 5).
+-define(STP_SNMM_H0_MIM, 6).
+-define(STP_SNMM_H0_TRM, 7).
+-define(STP_SNMM_H0_DLM, 8).
+-define(STP_SNMM_H0_UFC, 10).
+-define(STP_SNMM_H0_UPU, 11).
+
+%% MTP3 service indicator for signalling network management.
+-define(STP_MTP3_SI_SNMM, 0).
+
 %% Configuration persistence and HA schemas.
 -define(STP_CONFIG_MAGIC, <<"TSTPCFG", 1>>).
 -define(STP_CONFIG_SCHEMA_VERSION, 1).

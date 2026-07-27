@@ -7,6 +7,7 @@ run() ->
         telco_stp_m3ua_tests,
         telco_stp_m2pa_tests,
         telco_stp_mtp3_tests,
+        telco_stp_snmm_tests,
         telco_stp_sccp_tests,
         telco_stp_scmg_tests,
         telco_stp_slt_tests,
