@@ -97,7 +97,7 @@ load_credentials() ->
 
 normalize_credential(#{
     id := Id, token_sha256 := Hash, roles := Roles
-}) when is_binary(Hash), byte_size(Hash) =:= 32,
+}) when is_binary(Hash), byte_size(Hash) =:= ?STP_SHA256_BYTES,
         is_list(Roles), Roles =/= [] ->
     true = lists:all(fun valid_role/1, Roles) orelse
         error({invalid_management_roles, Id, Roles}),

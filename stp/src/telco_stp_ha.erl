@@ -192,10 +192,10 @@ valid_secret(_Mode, Secret) ->
 valid_fence(standalone, undefined) -> true;
 valid_fence(primary, undefined) -> true;
 valid_fence(standby, Fence) ->
-    is_binary(Fence) andalso byte_size(Fence) =:= 32;
+    is_binary(Fence) andalso byte_size(Fence) =:= ?STP_SHA256_BYTES;
 valid_fence(_Mode, Fence) ->
     Fence =:= undefined orelse
-    (is_binary(Fence) andalso byte_size(Fence) =:= 32).
+    (is_binary(Fence) andalso byte_size(Fence) =:= ?STP_SHA256_BYTES).
 
 create_envelope(State) ->
     Generation = maps:get(generation, State) + 1,
@@ -218,15 +218,9 @@ create_envelope(State) ->
     }.
 
 snapshot_mac(Snapshot, undefined) ->
-    crypto:hash(
-        sha256,
-        term_to_binary(Snapshot, [{minor_version, 2}, deterministic])
-    );
+    telco_stp_term:sha256(Snapshot);
 snapshot_mac(Snapshot, Secret) ->
-    crypto:mac(
-        hmac, sha256, Secret,
-        term_to_binary(Snapshot, [{minor_version, 2}, deterministic])
-    ).
+    telco_stp_term:hmac_sha256(Snapshot, Secret).
 
 replicate_to_peers(Envelope, State) ->
     Config = maps:get(config, State),
@@ -567,9 +561,7 @@ persist_replica(Envelope, Path0) ->
     try
         Path = normalize_path(Path0),
         ok = filelib:ensure_dir(Path),
-        Binary = term_to_binary(Envelope, [
-            compressed, {minor_version, 2}, deterministic
-        ]),
+        Binary = telco_stp_term:compressed_binary(Envelope),
         Temporary = Path ++ ".tmp." ++ integer_to_list(
             erlang:unique_integer([positive, monotonic])
         ),

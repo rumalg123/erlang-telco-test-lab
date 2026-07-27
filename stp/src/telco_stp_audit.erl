@@ -129,10 +129,7 @@ valid_event(Details) ->
     is_map(Details).
 
 event_hash(Base) ->
-    crypto:hash(
-        sha256,
-        term_to_binary(Base, [{minor_version, 2}, deterministic])
-    ).
+    telco_stp_term:sha256(Base).
 
 persist(_Event, undefined) ->
     ok;
@@ -142,9 +139,7 @@ persist(Event, Path0) ->
             Path0, invalid_audit_log_path
         ),
         ok = filelib:ensure_dir(Path),
-        Payload = term_to_binary(Event, [
-            compressed, {minor_version, 2}, deterministic
-        ]),
+        Payload = telco_stp_term:compressed_binary(Event),
         Frame = <<(byte_size(Payload)):32/big, Payload/binary>>,
         file:write_file(Path, Frame, [append, binary, sync])
     catch
@@ -245,8 +240,9 @@ valid_persisted_event(Event) ->
         } ->
             is_integer(Sequence) andalso Sequence > 0 andalso
             is_binary(PreviousHash) andalso
-            byte_size(PreviousHash) =:= 32 andalso
-            is_binary(Hash) andalso byte_size(Hash) =:= 32 andalso
+            byte_size(PreviousHash) =:= ?STP_SHA256_BYTES andalso
+            is_binary(Hash) andalso
+            byte_size(Hash) =:= ?STP_SHA256_BYTES andalso
             is_map(Details);
         _ ->
             false
