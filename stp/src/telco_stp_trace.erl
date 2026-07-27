@@ -37,7 +37,9 @@ clear() ->
     gen_server:call(?MODULE, clear).
 
 export_pcapng(Path) ->
-    gen_server:call(?MODULE, {export_pcapng, Path}, 30000).
+    gen_server:call(
+        ?MODULE, {export_pcapng, Path}, ?STP_DEFAULT_OPERATION_TIMEOUT_MS
+    ).
 
 init([]) ->
     Config0 = application:get_env(?STP_APP, ?STP_ENV_TRACE, #{}),

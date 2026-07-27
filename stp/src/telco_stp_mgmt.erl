@@ -10,7 +10,9 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 execute(Token, Request) ->
-    gen_server:call(?MODULE, {execute, Token, Request}, 30000).
+    gen_server:call(
+        ?MODULE, {execute, Token, Request}, ?STP_DEFAULT_OPERATION_TIMEOUT_MS
+    ).
 
 reload_credentials() ->
     gen_server:call(?MODULE, reload_credentials).

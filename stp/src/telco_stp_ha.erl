@@ -21,14 +21,15 @@ status() ->
     gen_server:call(?MODULE, status).
 
 snapshot_now() ->
-    gen_server:call(?MODULE, snapshot_now, 30000).
+    gen_server:call(?MODULE, snapshot_now, ?STP_DEFAULT_OPERATION_TIMEOUT_MS).
 
 receive_snapshot(SourceNode, Envelope) ->
     gen_server:cast(?MODULE, {replica, SourceNode, Envelope}).
 
 receive_snapshot_sync(SourceNode, Envelope) ->
     gen_server:call(
-        ?MODULE, {replica, SourceNode, Envelope}, 30000
+        ?MODULE, {replica, SourceNode, Envelope},
+        ?STP_DEFAULT_OPERATION_TIMEOUT_MS
     ).
 
 promote(FencingToken) ->
