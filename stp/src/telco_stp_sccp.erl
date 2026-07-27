@@ -178,7 +178,7 @@ decode_address(<<Indicator:8, Rest/binary>>, Variant)
     try
         PcPresent = Indicator band 1,
         SsnPresent = (Indicator bsr 1) band 1,
-        Gti = (Indicator bsr 2) band 16#0f,
+        Gti = (Indicator bsr 2) band ?STP_SCCP_ADDRESS_GTI_MASK,
         RoutingIndicator =
             case (Indicator bsr 6) band 1 of
                 1 -> ssn;
@@ -621,7 +621,12 @@ encode_bcd([Low, High | Rest], Acc) ->
 
 decode_bcd(Binary, Odd) ->
     Nibbles = lists:flatmap(
-        fun(Byte) -> [Byte band 16#0f, (Byte bsr 4) band 16#0f] end,
+        fun(Byte) ->
+            [
+                Byte band ?STP_SCCP_BCD_NIBBLE_MASK,
+                (Byte bsr 4) band ?STP_SCCP_BCD_NIBBLE_MASK
+            ]
+        end,
         binary_to_list(Binary)
     ),
     Digits0 =

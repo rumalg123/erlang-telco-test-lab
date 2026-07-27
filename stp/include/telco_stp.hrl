@@ -87,6 +87,8 @@
 -define(STP_SCCP_LUDTS, 16#14).
 -define(STP_SCCP_OPTION_SEGMENTATION, 16#10).
 -define(STP_SCCP_OPTION_IMPORTANCE, 16#12).
+-define(STP_SCCP_ADDRESS_GTI_MASK, 16#0f).
+-define(STP_SCCP_BCD_NIBBLE_MASK, 16#0f).
 
 %% MTP3 Signalling Network Management Message groups, Q.704 H0.
 -define(STP_SNMM_H0_CHM, 1).
