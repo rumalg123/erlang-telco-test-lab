@@ -44,6 +44,7 @@
         telco_stp_metrics,
         telco_stp_mtp3,
         telco_stp_observability,
+        telco_stp_path,
         telco_stp_route_table,
         telco_stp_rkm,
         telco_stp_reassembly,

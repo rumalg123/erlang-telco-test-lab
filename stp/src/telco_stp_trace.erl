@@ -253,12 +253,8 @@ block(Type, Body) ->
 first_octets(Binary, Maximum) ->
     binary:part(Binary, 0, min(byte_size(Binary), Maximum)).
 
-normalize_path(Path) when is_binary(Path) ->
-    binary_to_list(Path);
-normalize_path(Path) when is_list(Path), Path =/= [] ->
-    Path;
 normalize_path(Path) ->
-    error({invalid_pcapng_path, Path}).
+    telco_stp_path:normalize(Path, invalid_pcapng_path).
 
 replace_file(Temporary, Path) ->
     case file:rename(Temporary, Path) of

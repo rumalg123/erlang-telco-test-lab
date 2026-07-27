@@ -138,7 +138,9 @@ persist(_Event, undefined) ->
     ok;
 persist(Event, Path0) ->
     try
-        Path = normalize_path(Path0),
+        Path = telco_stp_path:normalize(
+            Path0, invalid_audit_log_path
+        ),
         ok = filelib:ensure_dir(Path),
         Payload = term_to_binary(Event, [
             compressed, {minor_version, 2}, deterministic
@@ -148,13 +150,6 @@ persist(Event, Path0) ->
     catch
         error:CatchReason -> {error, CatchReason}
     end.
-
-normalize_path(Path) when is_binary(Path) ->
-    binary_to_list(Path);
-normalize_path(Path) when is_list(Path), Path =/= [] ->
-    Path;
-normalize_path(Path) ->
-    error({invalid_audit_log_path, Path}).
 
 verify_events([]) ->
     ok;
@@ -187,7 +182,9 @@ load_persisted(undefined, _Limit) ->
     {ok, 0, ?STP_ZERO_HASH, []};
 load_persisted(Path0, Limit) ->
     try
-        Path = normalize_path(Path0),
+        Path = telco_stp_path:normalize(
+            Path0, invalid_audit_log_path
+        ),
         case file:read_file(Path) of
             {ok, Binary} ->
                 case decode_frames(Binary, []) of

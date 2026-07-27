@@ -256,12 +256,8 @@ replace_existing_file(Temporary, Path) ->
             Error
     end.
 
-normalize_path(Path) when is_binary(Path) ->
-    binary_to_list(Path);
-normalize_path(Path) when is_list(Path), Path =/= [] ->
-    Path;
 normalize_path(Path) ->
-    error({invalid_configuration_path, Path}).
+    telco_stp_path:normalize(Path, invalid_configuration_path).
 
 temporary_path(Path) ->
     Path ++ ".tmp." ++ integer_to_list(
