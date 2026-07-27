@@ -137,10 +137,13 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 normalize_global_policy(Policy) when is_map(Policy) ->
-    Max = maps:get(max_registrations, Policy, 4096),
+    Max = maps:get(
+        max_registrations, Policy, ?STP_DEFAULT_RKM_MAX_REGISTRATIONS
+    ),
     RcStart = maps:get(rc_start, Policy, ?STP_DEFAULT_RKM_RC_START),
     RcEnd = maps:get(rc_end, Policy, ?STP_UINT32_MAX),
-    true = is_integer(Max) andalso Max > 0 andalso Max =< 1000000 orelse
+    true = is_integer(Max) andalso Max > 0 andalso
+        Max =< ?STP_MAX_RKM_REGISTRATIONS orelse
         error({invalid_rkm_max_registrations, Max}),
     true = is_integer(RcStart) andalso RcStart > 0 andalso
         RcStart =< ?STP_UINT32_MAX orelse

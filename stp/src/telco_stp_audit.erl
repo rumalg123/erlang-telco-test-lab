@@ -277,7 +277,8 @@ retain_latest(Events, Limit) ->
     lists:reverse(lists:nthtail(Drop, Events)).
 
 valid_limit(Limit) ->
-    is_integer(Limit) andalso Limit > 0 andalso Limit =< 1000000.
+    is_integer(Limit) andalso Limit > 0 andalso
+        Limit =< ?STP_MAX_AUDIT_HISTORY_LIMIT.
 
 valid_configured_path(undefined) -> true;
 valid_configured_path(Path) when is_binary(Path), byte_size(Path) > 0 -> true;
