@@ -3,6 +3,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -import(telco_stp_test_support, [
+    add_m2pa_loopback/2,
+    add_m2pa_loopback/3,
+    add_static_route/3,
     add_loopback/3,
     add_loopback/4,
     await_link_state/3,
@@ -529,18 +532,10 @@ m3ua_management_errors_and_notifications() ->
     )).
 
 m2pa_alignment_sequence_ack_and_retrieval() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => m2pa_peer,
-        linkset => m2pa_set,
-        adaptation => m2pa,
-        point_code_variant => itu,
-        sccp_variant => itu,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(
+        m2pa_peer, m2pa_set,
+        #{point_code_variant => itu, sccp_variant => itu}
+    ),
     {0, LocalAlignment} = receive_m2pa_binary(m2pa_peer),
     {ok, #{status := alignment}} =
         telco_stp_m2pa:decode(LocalAlignment),
@@ -555,12 +550,7 @@ m2pa_alignment_sequence_ack_and_retrieval() ->
     {0, ReadyReply} = receive_m2pa_binary(m2pa_peer),
     {ok, #{status := ready}} = telco_stp_m2pa:decode(ReadyReply),
     await_link_state(m2pa_peer, active, 100),
-    ok = telco_stp:add_route(#{
-        id => m2pa_outbound,
-        dpc => 6000,
-        mask => 16#ffffff,
-        linksets => [m2pa_set]
-    }),
+    ok = add_static_route(m2pa_outbound, 6000, [m2pa_set]),
     ?assertMatch(
         {ok, #{link := m2pa_peer}},
         telco_stp:transfer(sample_transfer(6000, <<"M2PA-OUT">>))
@@ -596,12 +586,7 @@ m2pa_alignment_sequence_ack_and_retrieval() ->
     ),
     ok = telco_stp:remove_route(m2pa_outbound),
     add_loopback(m2pa_egress, m2pa_egress_set, self()),
-    ok = telco_stp:add_route(#{
-        id => m2pa_inbound,
-        dpc => 7000,
-        mask => 16#ffffff,
-        linksets => [m2pa_egress_set]
-    }),
+    ok = add_static_route(m2pa_inbound, 7000, [m2pa_egress_set]),
     InboundTransfer = sample_transfer(7000, <<"M2PA-IN">>),
     {ok, InboundMtp3} = telco_stp_mtp3:encode(
         itu, InboundTransfer
@@ -623,24 +608,14 @@ m2pa_alignment_sequence_ack_and_retrieval() ->
     ).
 
 m2pa_snmm_transfer_management_controls_routes() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => snmm_m2pa_primary,
-        linkset => snmm_primary_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(
+        snmm_m2pa_primary, snmm_primary_set
+    ),
     establish_m2pa(snmm_m2pa_primary),
     add_loopback(snmm_secondary, snmm_secondary_set, self()),
-    ok = telco_stp:add_route(#{
-        id => snmm_route,
-        dpc => 7100,
-        mask => 16#ffffff,
-        linksets => [snmm_primary_set, snmm_secondary_set]
-    }),
+    ok = add_static_route(
+        snmm_route, 7100, [snmm_primary_set, snmm_secondary_set]
+    ),
     inject_m2pa_snmm(
         snmm_m2pa_primary, 0,
         #{type => tfp, affected_destination => 7100}
@@ -672,16 +647,7 @@ m2pa_snmm_transfer_management_controls_routes() ->
     ?assertEqual(<<"SNMM-TFA">>, maps:get(payload, RestoredTransfer)).
 
 m2pa_changeover_changeback_acknowledgements() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => chm_m2pa,
-        linkset => chm_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(chm_m2pa, chm_set),
     establish_m2pa(chm_m2pa),
     inject_m2pa_snmm(chm_m2pa, 0, #{type => coo, fsn => 16#55}),
     ?assertEqual(
@@ -712,24 +678,13 @@ m2pa_changeover_changeback_acknowledgements() ->
     ).
 
 m2pa_changeover_retrieves_and_reroutes_unacked_msus() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => chm_primary,
-        linkset => chm_primary_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(chm_primary, chm_primary_set),
     establish_m2pa(chm_primary),
     add_loopback(chm_secondary, chm_secondary_set, self()),
-    ok = telco_stp:add_route(#{
-        id => chm_retrieval_route,
-        dpc => 7200,
-        mask => 16#ffffff,
-        linksets => [chm_primary_set, chm_secondary_set]
-    }),
+    ok = add_static_route(
+        chm_retrieval_route, 7200,
+        [chm_primary_set, chm_secondary_set]
+    ),
     ?assertMatch(
         {ok, #{link := chm_primary}},
         telco_stp:transfer(sample_transfer(7200, <<"CO-FIRST">>))
@@ -774,24 +729,12 @@ m2pa_changeover_retrieves_and_reroutes_unacked_msus() ->
     ).
 
 m2pa_changeback_restores_primary_traffic() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => cba_primary,
-        linkset => cba_primary_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(cba_primary, cba_primary_set),
     establish_m2pa(cba_primary),
     add_loopback(cba_secondary, cba_secondary_set, self()),
-    ok = telco_stp:add_route(#{
-        id => cba_route,
-        dpc => 7300,
-        mask => 16#ffffff,
-        linksets => [cba_primary_set, cba_secondary_set]
-    }),
+    ok = add_static_route(
+        cba_route, 7300, [cba_primary_set, cba_secondary_set]
+    ),
     inject_m2pa_snmm(cba_primary, 0, #{type => xco, fsn => 0}),
     ?assertEqual(#{type => xca, fsn => 0}, receive_m2pa_snmm(cba_primary)),
     ?assertMatch(
@@ -827,24 +770,12 @@ m2pa_changeback_restores_primary_traffic() ->
     ?assertEqual(normal, maps:get(changeover_state, NetworkManagement)).
 
 m2pa_emergency_changeover_reroutes_all_unacked_msus() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => eco_primary,
-        linkset => eco_primary_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(eco_primary, eco_primary_set),
     establish_m2pa(eco_primary),
     add_loopback(eco_secondary, eco_secondary_set, self()),
-    ok = telco_stp:add_route(#{
-        id => eco_route,
-        dpc => 7400,
-        mask => 16#ffffff,
-        linksets => [eco_primary_set, eco_secondary_set]
-    }),
+    ok = add_static_route(
+        eco_route, 7400, [eco_primary_set, eco_secondary_set]
+    ),
     ?assertMatch(
         {ok, #{link := eco_primary}},
         telco_stp:transfer(sample_transfer(7400, <<"ECO-FIRST">>))
@@ -891,24 +822,12 @@ m2pa_emergency_changeover_reroutes_all_unacked_msus() ->
     ).
 
 m2pa_link_inhibit_uninhibit_controls_route_selection() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => lim_primary,
-        linkset => lim_primary_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(lim_primary, lim_primary_set),
     establish_m2pa(lim_primary),
     add_loopback(lim_secondary, lim_secondary_set, self()),
-    ok = telco_stp:add_route(#{
-        id => lim_route,
-        dpc => 7500,
-        mask => 16#ffffff,
-        linksets => [lim_primary_set, lim_secondary_set]
-    }),
+    ok = add_static_route(
+        lim_route, 7500, [lim_primary_set, lim_secondary_set]
+    ),
     inject_m2pa_snmm(lim_primary, 0, #{type => lin}),
     ?assertEqual(#{type => lia}, receive_m2pa_snmm(lim_primary)),
     ?assertMatch(
@@ -937,24 +856,12 @@ m2pa_link_inhibit_uninhibit_controls_route_selection() ->
     ?assertEqual(normal, maps:get(link_inhibit_state, NetworkManagement)).
 
 m2pa_force_uninhibit_restores_route_selection() ->
-    {ok, _Pid} = telco_stp:add_link(#{
-        name => lfu_primary,
-        linkset => lfu_primary_set,
-        adaptation => m2pa,
-        transport => telco_stp_transport_loopback,
-        peer => self(),
-        m2pa_proving_ms => 1,
-        m2pa_alignment_timeout_ms => 1000,
-        m2pa_t7_ms => 1000
-    }),
+    {ok, _Pid} = add_m2pa_loopback(lfu_primary, lfu_primary_set),
     establish_m2pa(lfu_primary),
     add_loopback(lfu_secondary, lfu_secondary_set, self()),
-    ok = telco_stp:add_route(#{
-        id => lfu_route,
-        dpc => 7600,
-        mask => 16#ffffff,
-        linksets => [lfu_primary_set, lfu_secondary_set]
-    }),
+    ok = add_static_route(
+        lfu_route, 7600, [lfu_primary_set, lfu_secondary_set]
+    ),
     inject_m2pa_snmm(lfu_primary, 0, #{type => lin}),
     ?assertEqual(#{type => lia}, receive_m2pa_snmm(lfu_primary)),
     ?assertMatch(

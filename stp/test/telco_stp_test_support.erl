@@ -1,8 +1,13 @@
 -module(telco_stp_test_support).
 
+-include("telco_stp.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -export([
+    add_m2pa_loopback/2,
+    add_m2pa_loopback/3,
+    add_static_route/3,
+    add_static_route/4,
     add_loopback/2,
     add_loopback/3,
     add_loopback/4,
@@ -14,6 +19,33 @@
     receive_protocol_data/1,
     sample_transfer/2
 ]).
+
+add_m2pa_loopback(Name, Linkset) ->
+    add_m2pa_loopback(Name, Linkset, #{}).
+
+add_m2pa_loopback(Name, Linkset, ExtraConfig) ->
+    Config = maps:merge(#{
+        name => Name,
+        linkset => Linkset,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }, ExtraConfig),
+    telco_stp:add_link(Config).
+
+add_static_route(Id, Dpc, Linksets) ->
+    add_static_route(Id, Dpc, Linksets, #{}).
+
+add_static_route(Id, Dpc, Linksets, ExtraRoute) ->
+    telco_stp:add_route(maps:merge(#{
+        id => Id,
+        dpc => Dpc,
+        mask => ?STP_POINT_CODE_MASK_24,
+        linksets => Linksets
+    }, ExtraRoute)).
 
 add_loopback(Name, Linkset) ->
     add_loopback(Name, Linkset, self(), true, 50).
