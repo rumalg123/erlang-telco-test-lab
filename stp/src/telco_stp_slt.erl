@@ -52,10 +52,20 @@ decode(Binary) when is_binary(Binary) ->
 decode(Value) ->
     {error, {invalid_slt_binary, Value}}.
 
-type_code(sltm) -> 1;
-type_code(slta) -> 2;
-type_code(Type) -> error({invalid_slt_type, Type}).
+type_code(Type) ->
+    case lists:keyfind(Type, 1, slt_types()) of
+        {Type, Code} -> Code;
+        false -> error({invalid_slt_type, Type})
+    end.
 
-type_name(1) -> sltm;
-type_name(2) -> slta;
-type_name(Type) -> error({invalid_slt_type, Type}).
+type_name(Code) ->
+    case lists:keyfind(Code, 2, slt_types()) of
+        {Type, Code} -> Type;
+        false -> error({invalid_slt_type, Code})
+    end.
+
+slt_types() ->
+    [
+        {sltm, 1},
+        {slta, 2}
+    ].

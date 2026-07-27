@@ -19,6 +19,17 @@ slta_roundtrip_test() ->
     ?assertEqual(<<16#21, 16#03, 1, 2, 3>>, Binary),
     ?assertEqual({ok, Message}, telco_stp_slt:decode(Binary)).
 
+known_slt_types_roundtrip_test() ->
+    lists:foreach(
+        fun({Type, Code}) ->
+            Message = #{type => Type, test_pattern => <<"A">>},
+            {ok, Binary} = telco_stp_slt:encode(Message),
+            ?assertEqual(<<Code:4, 1:4, 0:4, 1:4, "A">>, Binary),
+            ?assertEqual({ok, Message}, telco_stp_slt:decode(Binary))
+        end,
+        [{sltm, 1}, {slta, 2}]
+    ).
+
 strict_pattern_length_test() ->
     ?assertMatch(
         {error, {invalid_slt_pattern_length, 0}},
