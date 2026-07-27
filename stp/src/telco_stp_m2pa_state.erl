@@ -4,6 +4,7 @@
 
 -export([
     initial/0,
+    status/1,
     status_stream/1,
     acknowledge/2,
     retrieve/2,
@@ -22,6 +23,19 @@ initial() ->
         proving_token => undefined,
         alignment_token => undefined,
         last_error => undefined
+    }.
+
+status(M2pa) ->
+    #{
+        enabled => true,
+        tx_fsn => maps:get(tx_fsn, M2pa),
+        rx_fsn => maps:get(rx_fsn, M2pa),
+        peer_bsn => maps:get(peer_bsn, M2pa),
+        unacked => length(maps:get(unacked, M2pa)),
+        network_management => maps:get(network_management, M2pa, #{}),
+        local_status => maps:get(local_status, M2pa),
+        remote_status => maps:get(remote_status, M2pa),
+        last_error => maps:get(last_error, M2pa)
     }.
 
 status_stream(#{status := Status})

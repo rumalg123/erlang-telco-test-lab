@@ -81,6 +81,32 @@ m2pa_state_retrieval_selects_after_fsn_test() ->
         telco_stp_m2pa_state:retrieve(-1, State)
     ).
 
+m2pa_state_status_projects_public_fields_test() ->
+    State = (telco_stp_m2pa_state:initial())#{
+        tx_fsn => 10,
+        rx_fsn => 11,
+        peer_bsn => 12,
+        unacked => [#{fsn => 10}, #{fsn => 11}],
+        network_management => #{changeover_state => changeover},
+        local_status => ready,
+        remote_status => busy,
+        last_error => remote_busy
+    },
+    ?assertEqual(
+        #{
+            enabled => true,
+            tx_fsn => 10,
+            rx_fsn => 11,
+            peer_bsn => 12,
+            unacked => 2,
+            network_management => #{changeover_state => changeover},
+            local_status => ready,
+            remote_status => busy,
+            last_error => remote_busy
+        },
+        telco_stp_m2pa_state:status(State)
+    ).
+
 invalid_header_test() ->
     ?assertEqual(
         {error, {invalid_m2pa_class, 9}},

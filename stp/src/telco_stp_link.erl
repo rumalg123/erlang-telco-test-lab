@@ -1589,19 +1589,7 @@ m2pa_status(Data) ->
         m3ua ->
             #{enabled => false};
         m2pa ->
-            M2pa = maps:get(m2pa, Data),
-            #{
-                enabled => true,
-                tx_fsn => maps:get(tx_fsn, M2pa),
-                rx_fsn => maps:get(rx_fsn, M2pa),
-                peer_bsn => maps:get(peer_bsn, M2pa),
-                unacked => length(maps:get(unacked, M2pa)),
-                network_management =>
-                    maps:get(network_management, M2pa, #{}),
-                local_status => maps:get(local_status, M2pa),
-                remote_status => maps:get(remote_status, M2pa),
-                last_error => maps:get(last_error, M2pa)
-            }
+            telco_stp_m2pa_state:status(maps:get(m2pa, Data))
     end.
 
 close_transport(#{connected := false} = Data) ->
