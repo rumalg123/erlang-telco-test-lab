@@ -734,55 +734,55 @@ class_ids() ->
     ].
 
 type_id(_Class, Value) when is_integer(Value), Value >= 0, Value =< 255 -> Value;
-type_id(management, error) -> 0;
-type_id(management, notify) -> 1;
-type_id(transfer, data) -> 1;
-type_id(ssnm, duna) -> 1;
-type_id(ssnm, dava) -> 2;
-type_id(ssnm, daud) -> 3;
-type_id(ssnm, scon) -> 4;
-type_id(ssnm, dupu) -> 5;
-type_id(ssnm, drst) -> 6;
-type_id(aspsm, asp_up) -> 1;
-type_id(aspsm, asp_down) -> 2;
-type_id(aspsm, heartbeat) -> 3;
-type_id(aspsm, asp_up_ack) -> 4;
-type_id(aspsm, asp_down_ack) -> 5;
-type_id(aspsm, heartbeat_ack) -> 6;
-type_id(asptm, asp_active) -> 1;
-type_id(asptm, asp_inactive) -> 2;
-type_id(asptm, asp_active_ack) -> 3;
-type_id(asptm, asp_inactive_ack) -> 4;
-type_id(rkm, registration_request) -> 1;
-type_id(rkm, registration_response) -> 2;
-type_id(rkm, deregistration_request) -> 3;
-type_id(rkm, deregistration_response) -> 4;
-type_id(Class, Type) -> error({invalid_message_type, Class, Type}).
+type_id(Class, Type) ->
+    ClassId = class_id(Class),
+    case lists:filter(
+        fun({CandidateClass, CandidateType, _TypeId}) ->
+            CandidateClass =:= ClassId andalso CandidateType =:= Type
+        end,
+        type_ids()
+    ) of
+        [{ClassId, Type, TypeId}] -> TypeId;
+        [] -> error({invalid_message_type, Class, Type})
+    end.
 
-type_name(0, 0) -> error;
-type_name(0, 1) -> notify;
-type_name(1, 1) -> data;
-type_name(2, 1) -> duna;
-type_name(2, 2) -> dava;
-type_name(2, 3) -> daud;
-type_name(2, 4) -> scon;
-type_name(2, 5) -> dupu;
-type_name(2, 6) -> drst;
-type_name(3, 1) -> asp_up;
-type_name(3, 2) -> asp_down;
-type_name(3, 3) -> heartbeat;
-type_name(3, 4) -> asp_up_ack;
-type_name(3, 5) -> asp_down_ack;
-type_name(3, 6) -> heartbeat_ack;
-type_name(4, 1) -> asp_active;
-type_name(4, 2) -> asp_inactive;
-type_name(4, 3) -> asp_active_ack;
-type_name(4, 4) -> asp_inactive_ack;
-type_name(9, 1) -> registration_request;
-type_name(9, 2) -> registration_response;
-type_name(9, 3) -> deregistration_request;
-type_name(9, 4) -> deregistration_response;
-type_name(_Class, Type) -> Type.
+type_name(Class, Type) ->
+    case lists:filter(
+        fun({CandidateClass, _CandidateType, CandidateTypeId}) ->
+            CandidateClass =:= Class andalso CandidateTypeId =:= Type
+        end,
+        type_ids()
+    ) of
+        [{Class, TypeName, Type}] -> TypeName;
+        [] -> Type
+    end.
+
+type_ids() ->
+    [
+        {0, error, 0},
+        {0, notify, 1},
+        {1, data, 1},
+        {2, duna, 1},
+        {2, dava, 2},
+        {2, daud, 3},
+        {2, scon, 4},
+        {2, dupu, 5},
+        {2, drst, 6},
+        {3, asp_up, 1},
+        {3, asp_down, 2},
+        {3, heartbeat, 3},
+        {3, asp_up_ack, 4},
+        {3, asp_down_ack, 5},
+        {3, heartbeat_ack, 6},
+        {4, asp_active, 1},
+        {4, asp_inactive, 2},
+        {4, asp_active_ack, 3},
+        {4, asp_inactive_ack, 4},
+        {9, registration_request, 1},
+        {9, registration_response, 2},
+        {9, deregistration_request, 3},
+        {9, deregistration_response, 4}
+    ].
 
 traffic_mode_name(1) -> override;
 traffic_mode_name(2) -> loadshare;

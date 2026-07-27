@@ -69,6 +69,49 @@ known_classes_roundtrip_test() ->
         ]
     ).
 
+known_message_types_roundtrip_test() ->
+    lists:foreach(
+        fun({Class, Type, ClassId, TypeId}) ->
+            {ok, Binary} = telco_stp_m3ua:encode(#{
+                class => Class,
+                type => Type
+            }),
+            ?assertMatch(
+                <<1, 0, ClassId:8, TypeId:8, 0, 0, 0, 8>>,
+                Binary
+            ),
+            {ok, Message} = telco_stp_m3ua:decode(Binary),
+            ?assertEqual(Class, maps:get(class, Message)),
+            ?assertEqual(Type, maps:get(type, Message)),
+            ?assertEqual(TypeId, maps:get(raw_type, Message))
+        end,
+        [
+            {management, error, 0, 0},
+            {management, notify, 0, 1},
+            {transfer, data, 1, 1},
+            {ssnm, duna, 2, 1},
+            {ssnm, dava, 2, 2},
+            {ssnm, daud, 2, 3},
+            {ssnm, scon, 2, 4},
+            {ssnm, dupu, 2, 5},
+            {ssnm, drst, 2, 6},
+            {aspsm, asp_up, 3, 1},
+            {aspsm, asp_down, 3, 2},
+            {aspsm, heartbeat, 3, 3},
+            {aspsm, asp_up_ack, 3, 4},
+            {aspsm, asp_down_ack, 3, 5},
+            {aspsm, heartbeat_ack, 3, 6},
+            {asptm, asp_active, 4, 1},
+            {asptm, asp_inactive, 4, 2},
+            {asptm, asp_active_ack, 4, 3},
+            {asptm, asp_inactive_ack, 4, 4},
+            {rkm, registration_request, 9, 1},
+            {rkm, registration_response, 9, 2},
+            {rkm, deregistration_request, 9, 3},
+            {rkm, deregistration_response, 9, 4}
+        ]
+    ).
+
 unknown_parameter_preserved_test() ->
     {ok, Binary} = telco_stp_m3ua:encode(#{
         class => 200,
