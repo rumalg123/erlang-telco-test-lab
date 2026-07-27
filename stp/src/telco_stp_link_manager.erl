@@ -313,14 +313,19 @@ valid_adaptation_config(m2pa, undefined, Config) ->
         m2pa_max_unacked, Config, ?STP_DEFAULT_M2PA_MAX_UNACKED
     ),
     Filler = maps:get(m2pa_proving_filler_bytes, Config, 0),
-    lists:all(
-        fun(Value) -> is_integer(Value) andalso Value > 0 end,
-        [Proving, Alignment, T7, Maximum]
-    ) andalso
-    is_integer(Filler) andalso Filler >= 0 andalso
-        Filler =< ?STP_MAX_SHORT_BYTES;
+    valid_m2pa_positive_values([Proving, Alignment, T7, Maximum]) andalso
+    valid_m2pa_filler_bytes(Filler);
 valid_adaptation_config(m2pa, _Rkm, _Config) ->
     false.
+
+valid_m2pa_positive_values(Values) ->
+    lists:all(fun valid_positive_integer/1, Values).
+
+valid_positive_integer(Value) ->
+    is_integer(Value) andalso Value > 0.
+
+valid_m2pa_filler_bytes(Value) ->
+    telco_stp_codec:in_range(Value, 0, ?STP_MAX_SHORT_BYTES).
 
 valid_transport(Module) when is_atom(Module) ->
     case code:ensure_loaded(Module) of

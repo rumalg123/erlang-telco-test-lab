@@ -80,8 +80,7 @@ retrieve(AfterFsn, M2pa) ->
 valid_retrieval_sequence(undefined) ->
     true;
 valid_retrieval_sequence(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso
-        Value =< ?STP_M2PA_MAX_SEQUENCE.
+    telco_stp_codec:in_range(Value, 0, ?STP_M2PA_MAX_SEQUENCE).
 
 drop_acknowledged(_Bsn, []) ->
     not_found;

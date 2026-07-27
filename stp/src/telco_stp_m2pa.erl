@@ -126,12 +126,14 @@ status_name(8) -> busy_ended;
 status_name(9) -> out_of_service;
 status_name(Value) -> Value.
 
-sequence(Value, _Name)
-        when is_integer(Value), Value >= 0,
-             Value =< ?STP_M2PA_MAX_SEQUENCE ->
-    Value;
 sequence(Value, Name) ->
-    error({invalid_m2pa_sequence, Name, Value}).
+    case valid_sequence(Value) of
+        true -> Value;
+        false -> error({invalid_m2pa_sequence, Name, Value})
+    end.
+
+valid_sequence(Value) ->
+    telco_stp_codec:in_range(Value, 0, ?STP_M2PA_MAX_SEQUENCE).
 
 uint(Value, Bits, Name) ->
     telco_stp_codec:uint(Value, Bits, Name).
