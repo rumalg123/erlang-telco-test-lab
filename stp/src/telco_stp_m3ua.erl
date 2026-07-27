@@ -2,6 +2,25 @@
 
 -include("telco_stp.hrl").
 
+-define(M3UA_PARAM_INFO_STRING, 16#0004).
+-define(M3UA_PARAM_ROUTING_CONTEXT, 16#0006).
+-define(M3UA_PARAM_DIAGNOSTIC_INFORMATION, 16#0007).
+-define(M3UA_PARAM_HEARTBEAT_DATA, 16#0009).
+-define(M3UA_PARAM_TRAFFIC_MODE_TYPE, 16#000b).
+-define(M3UA_PARAM_ERROR_CODE, 16#000c).
+-define(M3UA_PARAM_STATUS, 16#000d).
+-define(M3UA_PARAM_ASP_IDENTIFIER, 16#0011).
+-define(M3UA_PARAM_AFFECTED_POINT_CODE, 16#0012).
+-define(M3UA_PARAM_CORRELATION_ID, 16#0013).
+-define(M3UA_PARAM_NETWORK_APPEARANCE, 16#0200).
+-define(M3UA_PARAM_USER_CAUSE, 16#0204).
+-define(M3UA_PARAM_CONGESTION_INDICATIONS, 16#0205).
+-define(M3UA_PARAM_CONCERNED_DESTINATION, 16#0206).
+-define(M3UA_PARAM_ROUTING_KEY, 16#0207).
+-define(M3UA_PARAM_REGISTRATION_RESULT, 16#0208).
+-define(M3UA_PARAM_DEREGISTRATION_RESULT, 16#0209).
+-define(M3UA_PARAM_PROTOCOL_DATA, 16#0210).
+
 -export([
     encode/1,
     decode/1,
@@ -149,10 +168,13 @@ encode_params(Params) ->
     error({invalid_m3ua_parameters, Params}).
 
 encode_param(network_appearance, Value) ->
-    encode_tlv(16#0200, <<(uint(Value, 32, network_appearance)):32/big>>);
+    encode_tlv(
+        ?M3UA_PARAM_NETWORK_APPEARANCE,
+        <<(uint(Value, 32, network_appearance)):32/big>>
+    );
 encode_param(routing_context, Values) when is_list(Values), Values =/= [] ->
     Value = << <<(uint(Item, 32, routing_context)):32/big>> || Item <- Values >>,
-    encode_tlv(16#0006, Value);
+    encode_tlv(?M3UA_PARAM_ROUTING_CONTEXT, Value);
 encode_param(protocol_data, Data) when is_map(Data) ->
     Opc = uint(maps:get(opc, Data), 32, opc),
     Dpc = uint(maps:get(dpc, Data), 32, dpc),
@@ -162,29 +184,32 @@ encode_param(protocol_data, Data) when is_map(Data) ->
     Sls = uint(maps:get(sls, Data), 8, sls),
     Payload = maps:get(payload, Data),
     true = is_binary(Payload) orelse error({invalid_payload, Payload}),
-    encode_tlv(16#0210, <<
+    encode_tlv(?M3UA_PARAM_PROTOCOL_DATA, <<
         Opc:32/big, Dpc:32/big, Si:8, Ni:8, Mp:8, Sls:8, Payload/binary
     >>);
 encode_param(correlation_id, Value) ->
-    encode_tlv(16#0013, <<(uint(Value, 32, correlation_id)):32/big>>);
+    encode_tlv(
+        ?M3UA_PARAM_CORRELATION_ID,
+        <<(uint(Value, 32, correlation_id)):32/big>>
+    );
 encode_param(affected_point_code, Values) when is_list(Values), Values =/= [] ->
     Value = <<
         <<(uint(Mask, 8, mask)):8, (uint(PointCode, 24, point_code)):24/big>>
         || {Mask, PointCode} <- Values
     >>,
-    encode_tlv(16#0012, Value);
+    encode_tlv(?M3UA_PARAM_AFFECTED_POINT_CODE, Value);
 encode_param(concerned_destination, PointCode) ->
     encode_tlv(
-        16#0206,
+        ?M3UA_PARAM_CONCERNED_DESTINATION,
         <<0:8, (uint(PointCode, 24, concerned_destination)):24/big>>
     );
 encode_param(congestion_indications, Level) ->
     encode_tlv(
-        16#0205,
+        ?M3UA_PARAM_CONGESTION_INDICATIONS,
         <<0:24, (uint(Level, 8, congestion_indications)):8>>
     );
 encode_param(user_cause, {Cause, User}) ->
-    encode_tlv(16#0204, <<
+    encode_tlv(?M3UA_PARAM_USER_CAUSE, <<
         (uint(Cause, 16, cause)):16/big,
         (uint(User, 16, user)):16/big
     >>);
@@ -195,13 +220,19 @@ encode_param(traffic_mode_type, loadshare) ->
 encode_param(traffic_mode_type, broadcast) ->
     encode_param(traffic_mode_type, 3);
 encode_param(traffic_mode_type, Value) ->
-    encode_tlv(16#000b, <<(uint(Value, 32, traffic_mode_type)):32/big>>);
+    encode_tlv(
+        ?M3UA_PARAM_TRAFFIC_MODE_TYPE,
+        <<(uint(Value, 32, traffic_mode_type)):32/big>>
+    );
 encode_param(asp_identifier, Value) ->
-    encode_tlv(16#0011, <<(uint(Value, 32, asp_identifier)):32/big>>);
+    encode_tlv(
+        ?M3UA_PARAM_ASP_IDENTIFIER,
+        <<(uint(Value, 32, asp_identifier)):32/big>>
+    );
 encode_param(heartbeat_data, Value) when is_binary(Value) ->
-    encode_tlv(16#0009, Value);
+    encode_tlv(?M3UA_PARAM_HEARTBEAT_DATA, Value);
 encode_param(info_string, Value) when is_binary(Value) ->
-    encode_tlv(16#0004, Value);
+    encode_tlv(?M3UA_PARAM_INFO_STRING, Value);
 encode_param(error_code, invalid_version) ->
     encode_param(error_code, 16#01);
 encode_param(error_code, unsupported_message_class) ->
@@ -239,26 +270,38 @@ encode_param(error_code, invalid_routing_context) ->
 encode_param(error_code, no_configured_as) ->
     encode_param(error_code, 16#1a);
 encode_param(error_code, Value) ->
-    encode_tlv(16#000c, <<(uint(Value, 32, error_code)):32/big>>);
+    encode_tlv(
+        ?M3UA_PARAM_ERROR_CODE,
+        <<(uint(Value, 32, error_code)):32/big>>
+    );
 encode_param(status, {StatusType, StatusInfo}) ->
-    encode_tlv(16#000d, <<
+    encode_tlv(?M3UA_PARAM_STATUS, <<
         (uint(StatusType, 16, status_type)):16/big,
         (uint(StatusInfo, 16, status_info)):16/big
     >>);
 encode_param(diagnostic_information, Value) when is_binary(Value) ->
-    encode_tlv(16#0007, Value);
+    encode_tlv(?M3UA_PARAM_DIAGNOSTIC_INFORMATION, Value);
 encode_param(routing_keys, Keys) when is_list(Keys), Keys =/= [] ->
-    [encode_tlv(16#0207, encode_routing_key(Key)) || Key <- Keys];
+    [
+        encode_tlv(?M3UA_PARAM_ROUTING_KEY, encode_routing_key(Key))
+        || Key <- Keys
+    ];
 encode_param(registration_results, Results)
         when is_list(Results), Results =/= [] ->
     [
-        encode_tlv(16#0208, encode_registration_result(Result))
+        encode_tlv(
+            ?M3UA_PARAM_REGISTRATION_RESULT,
+            encode_registration_result(Result)
+        )
         || Result <- Results
     ];
 encode_param(deregistration_results, Results)
         when is_list(Results), Results =/= [] ->
     [
-        encode_tlv(16#0209, encode_deregistration_result(Result))
+        encode_tlv(
+            ?M3UA_PARAM_DEREGISTRATION_RESULT,
+            encode_deregistration_result(Result)
+        )
         || Result <- Results
     ];
 encode_param(Tag, Value) when is_integer(Tag), is_binary(Value) ->
@@ -290,50 +333,56 @@ decode_params(<<Tag:16/big, Length:16/big, _/binary>>, _Acc) ->
 decode_params(Rest, _Acc) ->
     {error, {truncated_m3ua_parameter_header, byte_size(Rest)}}.
 
-decode_param(16#0200, <<Value:32/big>>, Acc) ->
+decode_param(?M3UA_PARAM_NETWORK_APPEARANCE, <<Value:32/big>>, Acc) ->
     Acc#{network_appearance => Value};
-decode_param(16#0006, Value, Acc) when byte_size(Value) rem 4 =:= 0 ->
+decode_param(?M3UA_PARAM_ROUTING_CONTEXT, Value, Acc)
+        when byte_size(Value) rem 4 =:= 0 ->
     Acc#{routing_context => [Item || <<Item:32/big>> <= Value]};
-decode_param(16#0210, <<
+decode_param(?M3UA_PARAM_PROTOCOL_DATA, <<
     Opc:32/big, Dpc:32/big, Si:8, Ni:8, Mp:8, Sls:8, Payload/binary
 >>, Acc) ->
     Acc#{protocol_data => #{
         opc => Opc, dpc => Dpc, si => Si, ni => Ni, mp => Mp, sls => Sls,
         payload => Payload
-    }};
-decode_param(16#0013, <<Value:32/big>>, Acc) ->
+}};
+decode_param(?M3UA_PARAM_CORRELATION_ID, <<Value:32/big>>, Acc) ->
     Acc#{correlation_id => Value};
-decode_param(16#0012, Value, Acc) when byte_size(Value) rem 4 =:= 0 ->
+decode_param(?M3UA_PARAM_AFFECTED_POINT_CODE, Value, Acc)
+        when byte_size(Value) rem 4 =:= 0 ->
     Acc#{affected_point_code => [
         {Mask, PointCode} || <<Mask:8, PointCode:24/big>> <= Value
     ]};
-decode_param(16#0206, <<_Reserved:8, PointCode:24/big>>, Acc) ->
+decode_param(?M3UA_PARAM_CONCERNED_DESTINATION,
+             <<_Reserved:8, PointCode:24/big>>, Acc) ->
     Acc#{concerned_destination => PointCode};
-decode_param(16#0205, <<_Reserved:24, Level:8>>, Acc) ->
+decode_param(?M3UA_PARAM_CONGESTION_INDICATIONS,
+             <<_Reserved:24, Level:8>>, Acc) ->
     Acc#{congestion_indications => Level};
-decode_param(16#0204, <<Cause:16/big, User:16/big>>, Acc) ->
+decode_param(?M3UA_PARAM_USER_CAUSE,
+             <<Cause:16/big, User:16/big>>, Acc) ->
     Acc#{user_cause => {Cause, User}};
-decode_param(16#000b, <<Value:32/big>>, Acc) ->
+decode_param(?M3UA_PARAM_TRAFFIC_MODE_TYPE, <<Value:32/big>>, Acc) ->
     Acc#{traffic_mode_type => traffic_mode_name(Value)};
-decode_param(16#0011, <<Value:32/big>>, Acc) ->
+decode_param(?M3UA_PARAM_ASP_IDENTIFIER, <<Value:32/big>>, Acc) ->
     Acc#{asp_identifier => Value};
-decode_param(16#0009, Value, Acc) ->
+decode_param(?M3UA_PARAM_HEARTBEAT_DATA, Value, Acc) ->
     Acc#{heartbeat_data => Value};
-decode_param(16#0004, Value, Acc) ->
+decode_param(?M3UA_PARAM_INFO_STRING, Value, Acc) ->
     Acc#{info_string => Value};
-decode_param(16#000c, <<Value:32/big>>, Acc) ->
+decode_param(?M3UA_PARAM_ERROR_CODE, <<Value:32/big>>, Acc) ->
     Acc#{error_code => Value};
-decode_param(16#000d, <<StatusType:16/big, StatusInfo:16/big>>, Acc) ->
+decode_param(?M3UA_PARAM_STATUS,
+             <<StatusType:16/big, StatusInfo:16/big>>, Acc) ->
     Acc#{status => {StatusType, StatusInfo}};
-decode_param(16#0007, Value, Acc) ->
+decode_param(?M3UA_PARAM_DIAGNOSTIC_INFORMATION, Value, Acc) ->
     Acc#{diagnostic_information => Value};
-decode_param(16#0207, Value, Acc) ->
+decode_param(?M3UA_PARAM_ROUTING_KEY, Value, Acc) ->
     append_decoded(routing_keys, decode_routing_key(Value), Acc);
-decode_param(16#0208, Value, Acc) ->
+decode_param(?M3UA_PARAM_REGISTRATION_RESULT, Value, Acc) ->
     append_decoded(
         registration_results, decode_registration_result(Value), Acc
     );
-decode_param(16#0209, Value, Acc) ->
+decode_param(?M3UA_PARAM_DEREGISTRATION_RESULT, Value, Acc) ->
     append_decoded(
         deregistration_results, decode_deregistration_result(Value), Acc
     );
