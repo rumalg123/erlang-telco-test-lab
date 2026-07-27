@@ -261,3 +261,52 @@ malformed_nested_routing_key_test() ->
             <<1, 0, 9, 1, Length:32/big, RoutingKey/binary>>
         )
     ).
+
+duplicate_nested_routing_key_parameter_test() ->
+    RoutingKey = <<
+        16#020a:16/big, 8:16/big, 1:32/big,
+        16#020a:16/big, 8:16/big, 2:32/big,
+        16#020b:16/big, 8:16/big, 0:8, 16#010203:24/big
+    >>,
+    Parameter = m3ua_tlv(16#0207, RoutingKey),
+    Length = 8 + byte_size(Parameter),
+    ?assertEqual(
+        {error, {duplicate_nested_parameter, local_rk_identifier}},
+        telco_stp_m3ua:decode(
+            <<1, 0, 9, 1, Length:32/big, Parameter/binary>>
+        )
+    ).
+
+unsupported_registration_result_parameter_test() ->
+    RegistrationResult = <<
+        16#020a:16/big, 8:16/big, 1:32/big,
+        16#9999:16/big, 8:16/big, 2:32/big,
+        16#0006:16/big, 8:16/big, 3:32/big
+    >>,
+    Parameter = m3ua_tlv(16#0208, RegistrationResult),
+    Length = 8 + byte_size(Parameter),
+    ?assertEqual(
+        {error, {unsupported_nested_parameter, 16#9999}},
+        telco_stp_m3ua:decode(
+            <<1, 0, 9, 2, Length:32/big, Parameter/binary>>
+        )
+    ).
+
+invalid_registration_result_parameter_shape_test() ->
+    RegistrationResult = <<
+        16#020a:16/big, 7:16/big, 1:24,
+        0:8
+    >>,
+    Parameter = m3ua_tlv(16#0208, RegistrationResult),
+    Length = 8 + byte_size(Parameter),
+    ?assertEqual(
+        {error, {invalid_nested_parameter, 16#020a, <<0, 0, 1>>}},
+        telco_stp_m3ua:decode(
+            <<1, 0, 9, 2, Length:32/big, Parameter/binary>>
+        )
+    ).
+
+m3ua_tlv(Tag, Value) ->
+    Length = 4 + byte_size(Value),
+    PadLength = (4 - (Length rem 4)) rem 4,
+    <<Tag:16/big, Length:16/big, Value/binary, 0:(PadLength * 8)>>.
