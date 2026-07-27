@@ -87,9 +87,7 @@ decode_sio(Sio) ->
     {(Sio bsr 6) band 3, (Sio bsr 4) band 3, Sio band ?STP_MTP3_SLS_MASK}.
 
 payload(Message) ->
-    Value = maps:get(payload, Message),
-    true = is_binary(Value) orelse error({invalid_payload, Value}),
-    Value.
+    telco_stp_codec:binary(maps:get(payload, Message), invalid_payload).
 
 uint(Value, Bits, Name) ->
     telco_stp_codec:uint(Value, Bits, Name).

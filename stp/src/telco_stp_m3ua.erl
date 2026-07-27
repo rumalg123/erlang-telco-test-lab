@@ -108,8 +108,9 @@ protocol_data(Message) ->
     Ni = uint(maps:get(ni, Message), 8, ni),
     Mp = uint(maps:get(mp, Message), 8, mp),
     Sls = uint(maps:get(sls, Message), 8, sls),
-    Payload = maps:get(payload, Message),
-    true = is_binary(Payload) orelse error({invalid_payload, Payload}),
+    Payload = telco_stp_codec:binary(
+        maps:get(payload, Message), invalid_payload
+    ),
     #{opc => Opc, dpc => Dpc, si => Si, ni => Ni, mp => Mp, sls => Sls,
       payload => Payload}.
 
@@ -163,8 +164,7 @@ encode_param(protocol_data, Data) when is_map(Data) ->
     Ni = uint(maps:get(ni, Data), 8, ni),
     Mp = uint(maps:get(mp, Data), 8, mp),
     Sls = uint(maps:get(sls, Data), 8, sls),
-    Payload = maps:get(payload, Data),
-    true = is_binary(Payload) orelse error({invalid_payload, Payload}),
+    Payload = telco_stp_codec:binary(maps:get(payload, Data), invalid_payload),
     encode_tlv(?STP_M3UA_PARAM_PROTOCOL_DATA, <<
         Opc:32/big, Dpc:32/big, Si:8, Ni:8, Mp:8, Sls:8, Payload/binary
     >>);

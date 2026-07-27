@@ -68,13 +68,15 @@ next_sequence(Value)
 
 encode_body(user_data, Message) ->
     Priority = uint(maps:get(priority, Message, 0), 2, priority),
-    Mtp3 = maps:get(mtp3, Message, <<>>),
-    true = is_binary(Mtp3) orelse error({invalid_mtp3_payload, Mtp3}),
+    Mtp3 = telco_stp_codec:binary(
+        maps:get(mtp3, Message, <<>>), invalid_mtp3_payload
+    ),
     {1, <<Priority:2, 0:6, Mtp3/binary>>};
 encode_body(link_status, Message) ->
     Status = status_id(maps:get(status, Message)),
-    Filler = maps:get(filler, Message, <<>>),
-    true = is_binary(Filler) orelse error({invalid_m2pa_filler, Filler}),
+    Filler = telco_stp_codec:binary(
+        maps:get(filler, Message, <<>>), invalid_m2pa_filler
+    ),
     {2, <<Status:32/big, Filler/binary>>};
 encode_body(Type, _Message) ->
     error({invalid_m2pa_type, Type}).
