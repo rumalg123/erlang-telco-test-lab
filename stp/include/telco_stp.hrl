@@ -11,11 +11,15 @@
 -define(STP_METRICS_TABLE, telco_stp_metrics_table).
 
 %% Common integer limits.
+-define(STP_UINT8_MAX, 16#ff).
 -define(STP_UINT16_MAX, 16#ffff).
 -define(STP_UINT32_MAX, 16#ffffffff).
 -define(STP_POINT_CODE_MASK_24, 16#ffffff).
 -define(STP_MAX_MILLISECONDS, 3600000).
 -define(STP_MAX_SHORT_BYTES, 65535).
+-define(STP_MICROSECONDS_PER_MILLISECOND, 1000).
+-define(STP_MICROSECONDS_PER_SECOND, 1000000).
+-define(STP_PERCENT_SCALE, 100).
 
 %% M3UA / SCTP.
 -define(STP_M3UA_VERSION, 1).
@@ -109,6 +113,7 @@
 -define(STP_DEFAULT_REASSEMBLY_CONTEXT_BYTES, 65536).
 -define(STP_DEFAULT_REASSEMBLY_TOTAL_BYTES, 67108864).
 -define(STP_DEFAULT_REASSEMBLY_TIMEOUT_MS, 10000).
+-define(STP_MAX_LOAD_CONCURRENCY, 1024).
 
 %% Application environment keys.
 -define(STP_ENV_AUDIT_HISTORY_LIMIT, audit_history_limit).

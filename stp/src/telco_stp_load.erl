@@ -1,5 +1,7 @@
 -module(telco_stp_load).
 
+-include("telco_stp.hrl").
+
 -export([run/3]).
 
 -spec run(map(), pos_integer(), pos_integer()) ->
@@ -7,7 +9,7 @@
 run(Template, Count, Concurrency)
         when is_map(Template), is_integer(Count), Count > 0,
              is_integer(Concurrency), Concurrency > 0,
-             Concurrency =< 1024 ->
+             Concurrency =< ?STP_MAX_LOAD_CONCURRENCY ->
     Workers = min(Count, Concurrency),
     Ref = make_ref(),
     Parent = self(),
@@ -71,7 +73,7 @@ worker(Template, Offset, Count) ->
 
 vary_message(Template, Sequence) ->
     BaseSls = maps:get(sls, Template, 0),
-    Template#{sls => (BaseSls + Sequence) band 16#ff}.
+    Template#{sls => (BaseSls + Sequence) band ?STP_UINT8_MAX}.
 
 empty_stats() ->
     #{
@@ -93,9 +95,7 @@ record_result({ok, _Info}, Latency, Stats) ->
         end,
     Stats#{
         succeeded => maps:get(succeeded, Stats) + 1,
-        latency_histogram => maps:update_with(
-            Bucket, fun(Value) -> Value + 1 end, 1, Histogram
-        ),
+        latency_histogram => increment_counter(Bucket, Histogram),
         latency_min_us => Min,
         latency_max_us => max(maps:get(latency_max_us, Stats), Latency)
     };
@@ -103,9 +103,7 @@ record_result({error, Reason}, _Latency, Stats) ->
     Errors = maps:get(errors, Stats),
     Stats#{
         failed => maps:get(failed, Stats) + 1,
-        errors => maps:update_with(
-            Reason, fun(Value) -> Value + 1 end, 1, Errors
-        )
+        errors => increment_counter(Reason, Errors)
     }.
 
 latency_bucket(Value) ->
@@ -132,9 +130,7 @@ merge_stats(A, B) ->
         failed => maps:get(failed, A) + maps:get(failed, B),
         latency_histogram => maps:fold(
             fun(Bucket, Count, Acc) ->
-                maps:update_with(
-                    Bucket, fun(Value) -> Value + Count end, Count, Acc
-                )
+                add_counter(Bucket, Count, Acc)
             end,
             maps:get(latency_histogram, A),
             maps:get(latency_histogram, B)
@@ -147,9 +143,7 @@ merge_stats(A, B) ->
         ),
         errors => maps:fold(
             fun(Reason, Count, Acc) ->
-                maps:update_with(
-                    Reason, fun(Value) -> Value + Count end, Count, Acc
-                )
+                add_counter(Reason, Count, Acc)
             end,
             maps:get(errors, A),
             maps:get(errors, B)
@@ -164,8 +158,9 @@ report(Count, Workers, DurationUs, Stats) ->
         concurrency => Workers,
         succeeded => Succeeded,
         failed => maps:get(failed, Stats),
-        duration_ms => DurationUs / 1000,
-        throughput_per_second => (Count * 1000000) / DurationUs,
+        duration_ms => DurationUs / ?STP_MICROSECONDS_PER_MILLISECOND,
+        throughput_per_second =>
+            (Count * ?STP_MICROSECONDS_PER_SECOND) / DurationUs,
         latency_us => #{
             min => maps:get(latency_min_us, Stats),
             p50_upper_bound => percentile(Histogram, Succeeded, 50),
@@ -179,7 +174,8 @@ report(Count, Workers, DurationUs, Stats) ->
 percentile(_Histogram, 0, _Percent) ->
     undefined;
 percentile(Histogram, Total, Percent) ->
-    Target = (Total * Percent + 99) div 100,
+    Target =
+        (Total * Percent + (?STP_PERCENT_SCALE - 1)) div ?STP_PERCENT_SCALE,
     percentile_walk(lists:sort(maps:to_list(Histogram)), Target, 0).
 
 percentile_walk([{Upper, Count} | _Rest], Target, Seen)
@@ -191,3 +187,9 @@ percentile_walk([{_Upper, Count} | Rest], Target, Seen) ->
 min_defined(undefined, Value) -> Value;
 min_defined(Value, undefined) -> Value;
 min_defined(A, B) -> min(A, B).
+
+increment_counter(Key, Counters) ->
+    add_counter(Key, 1, Counters).
+
+add_counter(Key, Count, Counters) ->
+    maps:update_with(Key, fun(Value) -> Value + Count end, Count, Counters).
