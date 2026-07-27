@@ -37,6 +37,28 @@ ssc_congestion_roundtrip_test() ->
     {ok, Binary} = telco_stp_scmg:encode(Message, itu),
     ?assertEqual({ok, Message}, telco_stp_scmg:decode(Binary, itu)).
 
+known_scmg_types_roundtrip_test() ->
+    lists:foreach(
+        fun({Type, Code}) ->
+            Message = #{
+                type => Type,
+                affected_ssn => 6,
+                affected_point_code => 100,
+                multiplicity => 0
+            },
+            {ok, Binary} = telco_stp_scmg:encode(Message, itu),
+            ?assertMatch(<<Code:8, 6, 100:16/little, 0>>, Binary),
+            ?assertEqual({ok, Message}, telco_stp_scmg:decode(Binary, itu))
+        end,
+        [
+            {ssa, 1},
+            {ssp, 2},
+            {sst, 3},
+            {sor, 4},
+            {sog, 5}
+        ]
+    ).
+
 invalid_itu_point_code_test() ->
     ?assertMatch(
         {error, {invalid_scmg_length, itu, 5}},

@@ -349,21 +349,27 @@ status_for_type(ssc) -> congested;
 status_for_type(sor) -> out_of_service_requested;
 status_for_type(sog) -> out_of_service.
 
-type_code(ssa) -> 1;
-type_code(ssp) -> 2;
-type_code(sst) -> 3;
-type_code(sor) -> 4;
-type_code(sog) -> 5;
-type_code(ssc) -> 6;
-type_code(Type) -> error({invalid_scmg_type, Type}).
+type_code(Type) ->
+    case lists:keyfind(Type, 1, scmg_types()) of
+        {Type, Code} -> Code;
+        false -> error({invalid_scmg_type, Type})
+    end.
 
-type_name(1) -> ssa;
-type_name(2) -> ssp;
-type_name(3) -> sst;
-type_name(4) -> sor;
-type_name(5) -> sog;
-type_name(6) -> ssc;
-type_name(Type) -> error({invalid_scmg_type, Type}).
+type_name(Code) ->
+    case lists:keyfind(Code, 2, scmg_types()) of
+        {Type, Code} -> Type;
+        false -> error({invalid_scmg_type, Code})
+    end.
+
+scmg_types() ->
+    [
+        {ssa, 1},
+        {ssp, 2},
+        {sst, 3},
+        {sor, 4},
+        {sog, 5},
+        {ssc, 6}
+    ].
 
 encode_point_code(PointCode, itu) ->
     <<(uint(PointCode, 14, affected_point_code)):16/little>>;
