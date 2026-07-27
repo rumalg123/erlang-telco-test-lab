@@ -137,11 +137,8 @@ token_binary(Token) when is_list(Token), length(Token) >= 16 ->
 token_binary(_Token) ->
     error(invalid_management_token).
 
-valid_role(viewer) -> true;
-valid_role(operator) -> true;
-valid_role(engineer) -> true;
-valid_role(admin) -> true;
-valid_role(_Role) -> false.
+valid_role(Role) ->
+    maps:is_key(Role, role_permissions()).
 
 authorized(_Permission, Roles) when is_list(Roles) ->
     lists:member(admin, Roles) orelse
@@ -150,13 +147,16 @@ authorized(_Permission, Roles) when is_list(Roles) ->
         Roles
     ).
 
-role_allows(viewer, read) -> true;
-role_allows(operator, read) -> true;
-role_allows(operator, operate) -> true;
-role_allows(engineer, read) -> true;
-role_allows(engineer, operate) -> true;
-role_allows(engineer, configure) -> true;
-role_allows(_Role, _Permission) -> false.
+role_allows(Role, Permission) ->
+    lists:member(Permission, maps:get(Role, role_permissions(), [])).
+
+role_permissions() ->
+    #{
+        viewer => [read],
+        operator => [read, operate],
+        engineer => [read, operate, configure],
+        admin => [read, operate, configure, admin]
+    }.
 
 required_permission(status) -> read;
 required_permission(links) -> read;
