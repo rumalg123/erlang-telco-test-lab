@@ -1,4 +1,5 @@
 **/_build/
+**/out/
 **/erl_crash.dump
 *.beam
 /lab/artifacts/*
