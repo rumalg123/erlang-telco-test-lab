@@ -395,30 +395,30 @@ inbound_data(Socket, Ancillary, Data,
                     profile_config := Profile
                 }} ->
                     Adaptation = maps:get(adaptation, Profile, m3ua),
-                    case valid_ppid(Adaptation, Ppid) of
+                    case telco_stp_sctp:valid_ppid(Adaptation, Ppid) of
                         true ->
-                    telco_stp_alarm:clear(
-                        {listener, ListenerName, invalid_ppid},
+                            telco_stp_alarm:clear(
+                                {listener, ListenerName, invalid_ppid},
                                 #{reason => valid_ppid,
                                   adaptation => Adaptation}
-                    ),
+                            ),
                             _ = telco_stp_link_manager:inject(
                                 LinkName, Data,
                                 #{stream => Stream, ppid => Ppid}
                             ),
                             State;
                         false ->
-                    telco_stp_metrics:increment(
-                        {listener, ListenerName, invalid_ppid}
-                    ),
-                    telco_stp_alarm:raise(
-                        {listener, ListenerName, invalid_ppid}, warning,
+                            telco_stp_metrics:increment(
+                                {listener, ListenerName, invalid_ppid}
+                            ),
+                            telco_stp_alarm:raise(
+                                {listener, ListenerName, invalid_ppid}, warning,
                                 #{
                                     ppid => Ppid,
                                     expected_adaptation => Adaptation,
                                     assoc_id => AssocId
                                 }
-                    ),
+                            ),
                             State
                     end;
                 error ->
@@ -453,13 +453,6 @@ ancillary_info(#sctp_sndrcvinfo{
     {ok, AssocId, Ppid, Stream};
 ancillary_info(_Ancillary) ->
     {error, missing_sctp_sndrcvinfo}.
-
-valid_ppid(_Adaptation, 0) -> true;
-valid_ppid(m3ua, ?STP_M3UA_PPID) -> true;
-valid_ppid(m3ua, ?STP_M3UA_NETWORK_PPID) -> true;
-valid_ppid(m2pa, ?STP_M2PA_PPID) -> true;
-valid_ppid(m2pa, ?STP_M2PA_NETWORK_PPID) -> true;
-valid_ppid(_Adaptation, _Ppid) -> false.
 
 inbound_link_config(
     ListenerName, AssocId, RemoteIp, RemotePort, Profile

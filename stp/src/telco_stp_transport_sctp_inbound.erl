@@ -1,8 +1,6 @@
 -module(telco_stp_transport_sctp_inbound).
 -behaviour(telco_stp_transport).
 
--include("telco_stp.hrl").
-
 -export([open/2, send/2, handle_info/2, close/1]).
 
 open(_Owner, Config) ->
@@ -13,7 +11,7 @@ open(_Owner, Config) ->
                 listener_name => maps:get(listener_name, Config),
                 assoc_id => maps:get(assoc_id, Config),
                 stream => maps:get(stream, Config, 0),
-                ppid => adaptation_ppid(
+                ppid => telco_stp_sctp:adaptation_ppid(
                     maps:get(adaptation, Config, m3ua)
                 )
             }};
@@ -45,6 +43,3 @@ handle_info(_Info, State) ->
 
 close(_State) ->
     ok.
-
-adaptation_ppid(m3ua) -> ?STP_M3UA_PPID;
-adaptation_ppid(m2pa) -> ?STP_M2PA_PPID.

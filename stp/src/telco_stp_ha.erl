@@ -169,7 +169,8 @@ normalize_config(Config) when is_map(Config) ->
         error(invalid_ha_shared_secret),
     true = valid_fence(Mode, Fence) orelse
         error(invalid_ha_fencing_token),
-    true = valid_path(Path) orelse error(invalid_ha_snapshot_path),
+    true = telco_stp_path:configured(Path) orelse
+        error(invalid_ha_snapshot_path),
     #{
         mode => Mode,
         peers => lists:usort(Peers),
@@ -195,11 +196,6 @@ valid_fence(standby, Fence) ->
 valid_fence(_Mode, Fence) ->
     Fence =:= undefined orelse
     (is_binary(Fence) andalso byte_size(Fence) =:= 32).
-
-valid_path(undefined) -> true;
-valid_path(Path) when is_binary(Path), byte_size(Path) > 0 -> true;
-valid_path(Path) when is_list(Path), Path =/= [] -> true;
-valid_path(_Path) -> false.
 
 create_envelope(State) ->
     Generation = maps:get(generation, State) + 1,

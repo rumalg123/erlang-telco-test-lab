@@ -422,7 +422,9 @@ remove_destination_entries(Source, Mask, Dpc, Metadata, Destinations) ->
                 EntrySource =:= Source andalso
                 EntryMask =:= Mask andalso
                 EntryDpc =:= Dpc andalso
-                network_appearance_matches(NetworkAppearance, EntryNa)
+                telco_stp_match:network_appearance(
+                    NetworkAppearance, EntryNa
+                )
             )
         end,
         Destinations
@@ -469,7 +471,7 @@ destination_matches(
     Na = maps:get(network_appearance, Message, any),
     Si = maps:get(si, Message),
     point_code_matches(Dpc, AffectedDpc, WildcardBits) andalso
-    network_appearance_matches(Na, EntryNa) andalso
+    telco_stp_match:network_appearance(Na, EntryNa) andalso
     (UserPart =:= any orelse UserPart =:= Si).
 
 point_code_matches(_Dpc, _Affected, WildcardBits)
@@ -477,11 +479,6 @@ point_code_matches(_Dpc, _Affected, WildcardBits)
     true;
 point_code_matches(Dpc, Affected, WildcardBits) ->
     (Dpc bsr WildcardBits) =:= (Affected bsr WildcardBits).
-
-network_appearance_matches(any, _Value) -> true;
-network_appearance_matches(_Value, any) -> true;
-network_appearance_matches(Value, Value) -> true;
-network_appearance_matches(_A, _B) -> false.
 
 emit_destination_alarms(Source, Status, Affected, Metadata) ->
     lists:foreach(

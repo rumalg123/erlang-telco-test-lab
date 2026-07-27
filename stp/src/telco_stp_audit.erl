@@ -38,7 +38,7 @@ init([]) ->
     Path = application:get_env(
         ?STP_APP, ?STP_ENV_AUDIT_LOG_PATH, undefined
     ),
-    case valid_limit(Limit) andalso valid_configured_path(Path) of
+    case valid_limit(Limit) andalso telco_stp_path:configured(Path) of
         false ->
             {stop, {invalid_audit_configuration, Limit, Path}};
         true ->
@@ -279,11 +279,6 @@ retain_latest(Events, Limit) ->
 valid_limit(Limit) ->
     is_integer(Limit) andalso Limit > 0 andalso
         Limit =< ?STP_MAX_AUDIT_HISTORY_LIMIT.
-
-valid_configured_path(undefined) -> true;
-valid_configured_path(Path) when is_binary(Path), byte_size(Path) > 0 -> true;
-valid_configured_path(Path) when is_list(Path), Path =/= [] -> true;
-valid_configured_path(_Path) -> false.
 
 notify(Event, State) ->
     lists:foreach(

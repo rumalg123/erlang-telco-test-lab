@@ -11,7 +11,8 @@ open(Owner, Config) ->
         {ok, Endpoint} ->
             Adaptation = maps:get(adaptation, Config, m3ua),
             RemotePort = maps:get(
-                remote_port, Config, default_port(Adaptation)
+                remote_port, Config,
+                telco_stp_sctp:default_port(Adaptation)
             ),
             LocalPort = maps:get(local_port, Config, 0),
             LocalIps = maps:get(local_ips, Config, [any]),
@@ -38,7 +39,9 @@ open(Owner, Config) ->
                                 assoc_id => AssocId,
                                 stream => maps:get(stream, Config, 0),
                                 adaptation => Adaptation,
-                                ppid => adaptation_ppid(Adaptation),
+                                ppid => telco_stp_sctp:adaptation_ppid(
+                                    Adaptation
+                                ),
                                 remote_endpoint => Endpoint
                             }};
                         {error, Reason} ->
@@ -78,7 +81,7 @@ handle_info(
     case ancillary_info(Ancillary) of
         {ok, AssocId, Ppid, Stream} ->
             Adaptation = maps:get(adaptation, State),
-            case valid_ppid(Adaptation, Ppid) of
+            case telco_stp_sctp:valid_ppid(Adaptation, Ppid) of
                 true ->
                     {data, Data, #{stream => Stream, ppid => Ppid}, State};
                 false ->
@@ -187,15 +190,3 @@ ancillary_info(#sctp_sndrcvinfo{
 ancillary_info(_Ancillary) ->
     {error, missing_sctp_sndrcvinfo}.
 
-default_port(m3ua) -> ?STP_M3UA_PORT;
-default_port(m2pa) -> ?STP_M2PA_PORT.
-
-adaptation_ppid(m3ua) -> ?STP_M3UA_PPID;
-adaptation_ppid(m2pa) -> ?STP_M2PA_PPID.
-
-valid_ppid(_Adaptation, 0) -> true;
-valid_ppid(m3ua, ?STP_M3UA_PPID) -> true;
-valid_ppid(m3ua, ?STP_M3UA_NETWORK_PPID) -> true;
-valid_ppid(m2pa, ?STP_M2PA_PPID) -> true;
-valid_ppid(m2pa, ?STP_M2PA_NETWORK_PPID) -> true;
-valid_ppid(_Adaptation, _Ppid) -> false.
