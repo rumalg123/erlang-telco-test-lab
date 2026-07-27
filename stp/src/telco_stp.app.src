@@ -39,6 +39,7 @@
         telco_stp_load,
         telco_stp_m3ua,
         telco_stp_m2pa,
+        telco_stp_m2pa_state,
         telco_stp_snmm,
         telco_stp_mgmt,
         telco_stp_metrics,

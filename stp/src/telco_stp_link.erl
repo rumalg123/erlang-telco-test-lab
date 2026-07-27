@@ -71,7 +71,7 @@ init([Name, Config]) ->
         last_heartbeat_ack => undefined,
         last_rkm_results => undefined,
         last_management_notification => undefined,
-        m2pa => initial_m2pa_state()
+        m2pa => telco_stp_m2pa_state:initial()
     },
     Actions =
         case maps:get(admin, Config, up) of
@@ -827,23 +827,9 @@ send_transfer_message(Message, Data) ->
             send_m2pa_transfer(Message, Data)
     end.
 
-initial_m2pa_state() ->
-    #{
-        tx_fsn => ?STP_M2PA_MAX_SEQUENCE,
-        rx_fsn => ?STP_M2PA_MAX_SEQUENCE,
-        peer_bsn => ?STP_M2PA_MAX_SEQUENCE,
-        unacked => [],
-        network_management => #{},
-        local_status => out_of_service,
-        remote_status => out_of_service,
-        proving_token => undefined,
-        alignment_token => undefined,
-        last_error => undefined
-    }.
-
 start_m2pa_alignment(Data0) ->
     Config = maps:get(config, Data0),
-    M2pa = (initial_m2pa_state())#{
+    M2pa = (telco_stp_m2pa_state:initial())#{
         local_status => alignment
     },
     Data = Data0#{m2pa => M2pa, congestion => 0},
@@ -872,7 +858,9 @@ handle_m2pa(Binary, Metadata, State, Data) ->
     telco_stp_metrics:increment({link, Name, rx}),
     case telco_stp_m2pa:decode(Binary) of
         {ok, #{type := link_status} = Message} ->
-            Stream = maps:get(stream, Metadata, status_stream(Message)),
+            Stream = maps:get(
+                stream, Metadata, telco_stp_m2pa_state:status_stream(Message)
+            ),
             handle_m2pa_link_status(Message, Stream, State, Data);
         {ok, #{type := user_data} = Message} ->
             Stream = maps:get(stream, Metadata, 1),
@@ -888,16 +876,9 @@ handle_m2pa(Binary, Metadata, State, Data) ->
             }}
     end.
 
-status_stream(#{status := Status})
-        when Status =:= processor_outage;
-             Status =:= processor_recovered ->
-    1;
-status_stream(_Message) ->
-    0.
-
 handle_m2pa_link_status(Message, Stream, State, Data) ->
     Status = maps:get(status, Message),
-    ExpectedStream = status_stream(Message),
+    ExpectedStream = telco_stp_m2pa_state:status_stream(Message),
     case Stream =:= ExpectedStream orelse
          (Status =:= ready andalso (Stream =:= 0 orelse Stream =:= 1)) of
         false ->
@@ -905,7 +886,7 @@ handle_m2pa_link_status(Message, Stream, State, Data) ->
                 {invalid_status_stream, Status, Stream}, Data
             );
         true ->
-            M2pa0 = acknowledge_m2pa(
+            M2pa0 = telco_stp_m2pa_state:acknowledge(
                 maps:get(bsn, Message), maps:get(m2pa, Data)
             ),
             M2pa = M2pa0#{remote_status => Status},
@@ -1043,7 +1024,7 @@ m2pa_in_service(Data) ->
 handle_m2pa_user_data(Message, Stream, State, Data) ->
     case Stream of
         1 ->
-            M2pa0 = acknowledge_m2pa(
+            M2pa0 = telco_stp_m2pa_state:acknowledge(
                 maps:get(bsn, Message), maps:get(m2pa, Data)
             ),
             Updated = Data#{m2pa => M2pa0},
@@ -1308,7 +1289,9 @@ retrieve_for_changeover(#{type := eco}, Data) ->
     end;
 retrieve_for_changeover(#{fsn := Fsn}, Data) ->
     M2pa = maps:get(m2pa, Data),
-    AcknowledgedData = Data#{m2pa => acknowledge_m2pa(Fsn, M2pa)},
+    AcknowledgedData = Data#{
+        m2pa => telco_stp_m2pa_state:acknowledge(Fsn, M2pa)
+    },
     case retrieve_m2pa_messages(Fsn, AcknowledgedData) of
         {ok, Messages, NewData} ->
             {Messages, NewData};
@@ -1538,22 +1521,6 @@ proving_filler(Config) ->
             crypto:strong_rand_bytes(Value)
     end.
 
-acknowledge_m2pa(Bsn, M2pa) ->
-    Unacked = maps:get(unacked, M2pa),
-    case drop_acknowledged(Bsn, Unacked, []) of
-        {found, Remaining} ->
-            M2pa#{peer_bsn => Bsn, unacked => Remaining};
-        not_found ->
-            M2pa#{peer_bsn => Bsn}
-    end.
-
-drop_acknowledged(_Bsn, [], _Seen) ->
-    not_found;
-drop_acknowledged(Bsn, [#{fsn := Bsn} | Rest], _Seen) ->
-    {found, Rest};
-drop_acknowledged(Bsn, [_Entry | Rest], Seen) ->
-    drop_acknowledged(Bsn, Rest, Seen).
-
 handle_m2pa_t7(Fsn, Data) ->
     M2pa = maps:get(m2pa, Data),
     case lists:any(
@@ -1600,52 +1567,14 @@ retrieve_m2pa_messages(AfterFsn, Data) ->
         m3ua ->
             {error, not_m2pa_link};
         m2pa ->
-            case valid_m2pa_retrieval_sequence(AfterFsn) of
-                false ->
-                    {error, {invalid_m2pa_retrieval_sequence, AfterFsn}};
-                true ->
-                    M2pa = maps:get(m2pa, Data),
-                    Entries = maps:get(unacked, M2pa),
-                    SelectedEntries = entries_after_fsn(
-                        AfterFsn, Entries
-                    ),
-                    Messages = [
-                        #{
-                            fsn => maps:get(fsn, Entry),
-                            transfer => maps:get(message, Entry)
-                        }
-                        || Entry <- SelectedEntries
-                    ],
-                    SelectedFsns = [
-                        maps:get(fsn, Item) || Item <- Messages
-                    ],
-                    Remaining = [
-                        Entry
-                        || Entry <- Entries,
-                           not lists:member(
-                               maps:get(fsn, Entry), SelectedFsns
-                           )
-                    ],
-                    {ok, Messages, Data#{m2pa => M2pa#{
-                        unacked => Remaining
-                    }}}
+            case telco_stp_m2pa_state:retrieve(
+                AfterFsn, maps:get(m2pa, Data)
+            ) of
+                {ok, Messages, M2pa} ->
+                    {ok, Messages, Data#{m2pa => M2pa}};
+                Error ->
+                    Error
             end
-    end.
-
-valid_m2pa_retrieval_sequence(undefined) -> true;
-valid_m2pa_retrieval_sequence(Value) ->
-    is_integer(Value) andalso Value >= 0 andalso
-        Value =< ?STP_M2PA_MAX_SEQUENCE.
-
-entries_after_fsn(undefined, Entries) ->
-    Entries;
-entries_after_fsn(AfterFsn, Entries) ->
-    case lists:dropwhile(
-        fun(Entry) -> maps:get(fsn, Entry) =/= AfterFsn end,
-        Entries
-    ) of
-        [_Matched | Rest] -> Rest;
-        [] -> Entries
     end.
 
 point_code_variant(Config) ->

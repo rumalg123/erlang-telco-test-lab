@@ -45,6 +45,42 @@ sequence_wrap_test() ->
     ?assertEqual(0, telco_stp_m2pa:next_sequence(16#ffffff)),
     ?assertEqual(100, telco_stp_m2pa:next_sequence(99)).
 
+m2pa_state_acknowledgement_trims_unacked_test() ->
+    State = (telco_stp_m2pa_state:initial())#{
+        unacked => [
+            #{fsn => 1, message => first},
+            #{fsn => 2, message => second},
+            #{fsn => 3, message => third}
+        ]
+    },
+    ?assertMatch(
+        #{peer_bsn := 2, unacked := [#{fsn := 3}]},
+        telco_stp_m2pa_state:acknowledge(2, State)
+    ),
+    ?assertMatch(
+        #{peer_bsn := 9, unacked := [_, _, _]},
+        telco_stp_m2pa_state:acknowledge(9, State)
+    ).
+
+m2pa_state_retrieval_selects_after_fsn_test() ->
+    State = (telco_stp_m2pa_state:initial())#{
+        unacked => [
+            #{fsn => 1, message => first},
+            #{fsn => 2, message => second},
+            #{fsn => 3, message => third}
+        ]
+    },
+    {ok, Messages, NewState} = telco_stp_m2pa_state:retrieve(1, State),
+    ?assertEqual(
+        [#{fsn => 2, transfer => second}, #{fsn => 3, transfer => third}],
+        Messages
+    ),
+    ?assertMatch(#{unacked := [#{fsn := 1}]}, NewState),
+    ?assertEqual(
+        {error, {invalid_m2pa_retrieval_sequence, -1}},
+        telco_stp_m2pa_state:retrieve(-1, State)
+    ).
+
 invalid_header_test() ->
     ?assertEqual(
         {error, {invalid_m2pa_class, 9}},
