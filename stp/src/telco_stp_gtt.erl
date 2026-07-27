@@ -720,7 +720,7 @@ boolean(false, _Name) -> false;
 boolean(Value, Name) -> error({invalid_boolean, Name, Value}).
 
 uint(Value, Bits, Name) ->
-    uint_max(Value, (1 bsl Bits) - 1, Name).
+    telco_stp_codec:uint(Value, Bits, Name).
 
 uint_max(Value, Max, _Name)
         when is_integer(Value), Value >= 0, Value =< Max ->
