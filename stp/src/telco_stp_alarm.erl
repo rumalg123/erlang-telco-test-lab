@@ -183,16 +183,19 @@ sort_alarms(Alarms) ->
         Alarms
     ).
 
-valid_severity(critical) -> true;
-valid_severity(major) -> true;
-valid_severity(minor) -> true;
-valid_severity(warning) -> true;
-valid_severity(info) -> true;
-valid_severity(_Severity) -> false.
+valid_severity(Severity) ->
+    lists:member(Severity, severities()).
 
-severity_rank(critical) -> 0;
-severity_rank(major) -> 1;
-severity_rank(minor) -> 2;
-severity_rank(warning) -> 3;
-severity_rank(info) -> 4.
+severity_rank(Severity) ->
+    severity_rank(Severity, severities(), 0).
+
+severity_rank(Severity, [Severity | _Rest], Rank) ->
+    Rank;
+severity_rank(Severity, [_Other | Rest], Rank) ->
+    severity_rank(Severity, Rest, Rank + 1);
+severity_rank(_Severity, [], Rank) ->
+    Rank.
+
+severities() ->
+    [critical, major, minor, warning, info].
 
