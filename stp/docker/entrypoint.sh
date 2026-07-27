@@ -46,6 +46,20 @@ require_directory() {
     [ -r "${path}" ] || fail "required directory is not readable: ${path}"
 }
 
+seed_missing_ebin_files() {
+    copied=false
+    for seed_file in "${SEED_EBIN}"/*; do
+        name="$(basename -- "${seed_file}")"
+        if [ ! -f "${LIVE_EBIN}/${name}" ]; then
+            cp -f "${seed_file}" "${LIVE_EBIN}/${name}"
+            copied=true
+        fi
+    done
+    if [ "${copied}" = "true" ]; then
+        printf 'Seeded missing host-mounted ebin files from image release payload.\n'
+    fi
+}
+
 require_directory "${SEED_SYSTEM_ROOT}"
 require_directory "${SYSTEM_ROOT}"
 
@@ -82,12 +96,9 @@ require_directory "${LOG_DIR}"
 
 case "${EBIN_MODE}" in
     seed)
-        if [ ! -f "${LIVE_EBIN}/telco_stp.app" ]; then
-            [ -w "${LIVE_EBIN}" ] ||
-                fail "live ebin is empty and not writable: ${LIVE_EBIN}"
-            cp -f "${SEED_EBIN}"/* "${LIVE_EBIN}/"
-            printf 'Seeded host-mounted ebin from image release payload.\n'
-        fi
+        [ -w "${LIVE_EBIN}" ] ||
+            fail "live ebin is not writable: ${LIVE_EBIN}"
+        seed_missing_ebin_files
         ;;
     refresh)
         [ -w "${LIVE_EBIN}" ] ||
