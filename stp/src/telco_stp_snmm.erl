@@ -210,8 +210,5 @@ decode_point_code(ansi, <<PointCode:24/little, Rest/binary>>) ->
 decode_point_code(ansi, Binary) ->
     {error, {truncated_snmm_point_code, ansi, byte_size(Binary)}}.
 
-uint(Value, Bits, _Name)
-        when is_integer(Value), Value >= 0, Value < (1 bsl Bits) ->
-    Value;
-uint(Value, _Bits, Name) ->
-    error({invalid_unsigned_integer, Name, Value}).
+uint(Value, Bits, Name) ->
+    telco_stp_codec:uint(Value, Bits, Name).

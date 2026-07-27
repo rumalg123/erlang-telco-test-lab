@@ -131,8 +131,5 @@ sequence(Value, _Name)
 sequence(Value, Name) ->
     error({invalid_m2pa_sequence, Name, Value}).
 
-uint(Value, Bits, _Name)
-        when is_integer(Value), Value >= 0, Value < (1 bsl Bits) ->
-    Value;
-uint(Value, _Bits, Name) ->
-    error({invalid_unsigned_integer, Name, Value}).
+uint(Value, Bits, Name) ->
+    telco_stp_codec:uint(Value, Bits, Name).

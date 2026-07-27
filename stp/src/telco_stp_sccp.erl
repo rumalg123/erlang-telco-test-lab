@@ -758,8 +758,5 @@ binary_value(Value, _Name) when is_binary(Value) ->
 binary_value(Value, Name) ->
     error({invalid_binary, Name, Value}).
 
-uint(Value, Bits, _Name)
-        when is_integer(Value), Value >= 0, Value < (1 bsl Bits) ->
-    Value;
-uint(Value, _Bits, Name) ->
-    error({invalid_unsigned_integer, Name, Value}).
+uint(Value, Bits, Name) ->
+    telco_stp_codec:uint(Value, Bits, Name).

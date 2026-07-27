@@ -754,11 +754,8 @@ tidy_unknown(#{unknown := []} = Params) ->
 tidy_unknown(#{unknown := Unknown} = Params) ->
     Params#{unknown => lists:reverse(Unknown)}.
 
-uint(Value, Bits, _Name)
-        when is_integer(Value), Value >= 0, Value < (1 bsl Bits) ->
-    Value;
-uint(Value, _Bits, Name) ->
-    error({invalid_unsigned_integer, Name, Value}).
+uint(Value, Bits, Name) ->
+    telco_stp_codec:uint(Value, Bits, Name).
 
 class_id(Name) when is_atom(Name) ->
     case lists:keyfind(Name, 1, class_ids()) of
