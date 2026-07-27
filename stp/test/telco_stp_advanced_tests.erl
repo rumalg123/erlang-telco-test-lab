@@ -32,6 +32,7 @@ advanced_stp_test_() ->
         fun m2pa_snmm_transfer_management_controls_routes/0,
         fun m2pa_changeover_changeback_acknowledgements/0,
         fun m2pa_changeover_retrieves_and_reroutes_unacked_msus/0,
+        fun m2pa_changeback_restores_primary_traffic/0,
         fun itu_signalling_link_test_is_acknowledged_on_source_link/0,
         fun authenticated_rbac_management_is_hash_chained/0,
         fun durable_audit_chain_resumes_after_restart/0,
@@ -769,6 +770,59 @@ m2pa_changeover_retrieves_and_reroutes_unacked_msus() ->
         changeover, maps:get(changeover_state, NetworkManagement)
     ).
 
+m2pa_changeback_restores_primary_traffic() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => cba_primary,
+        linkset => cba_primary_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(cba_primary),
+    add_loopback(cba_secondary, cba_secondary_set, self()),
+    ok = telco_stp:add_route(#{
+        id => cba_route,
+        dpc => 7300,
+        mask => 16#ffffff,
+        linksets => [cba_primary_set, cba_secondary_set]
+    }),
+    inject_m2pa_snmm(cba_primary, 0, #{type => xco, fsn => 0}),
+    ?assertEqual(#{type => xca, fsn => 0}, receive_m2pa_snmm(cba_primary)),
+    ?assertMatch(
+        {ok, #{link := cba_secondary}},
+        telco_stp:transfer(sample_transfer(7300, <<"DURING-CHANGEOVER">>))
+    ),
+    ?assertEqual(
+        <<"DURING-CHANGEOVER">>,
+        maps:get(payload, receive_protocol_data(cba_secondary))
+    ),
+    inject_m2pa_snmm(
+        cba_primary, 1, #{type => cbd, changeback_code => 16#31}
+    ),
+    ?assertEqual(
+        #{type => cba, changeback_code => 16#31},
+        receive_m2pa_snmm(cba_primary)
+    ),
+    ?assertMatch(
+        {ok, #{link := cba_primary}},
+        telco_stp:transfer(sample_transfer(7300, <<"AFTER-CHANGEBACK">>))
+    ),
+    RestoredTransfer = receive_m2pa_transfer(cba_primary),
+    ?assertEqual(
+        <<"AFTER-CHANGEBACK">>, maps:get(payload, RestoredTransfer)
+    ),
+    [Link] = [
+        Item || Item <- telco_stp:links(),
+                maps:get(name, Item) =:= cba_primary
+    ],
+    NetworkManagement = maps:get(
+        network_management, maps:get(m2pa, Link)
+    ),
+    ?assertEqual(normal, maps:get(changeover_state, NetworkManagement)).
+
 itu_signalling_link_test_is_acknowledged_on_source_link() ->
     add_loopback(slt_peer, slt_set, self()),
     {ok, Sltm} = telco_stp_slt:encode(#{
@@ -1265,6 +1319,23 @@ inject_m2pa_snmm(Link, Fsn, Snmm) ->
 
 receive_m2pa_snmm(Link) ->
     receive_m2pa_snmm(Link, 5).
+
+receive_m2pa_transfer(Link) ->
+    receive_m2pa_transfer(Link, 5).
+
+receive_m2pa_transfer(Link, Attempts) when Attempts > 0 ->
+    {1, Binary} = receive_m2pa_binary(Link),
+    {ok, #{type := user_data, mtp3 := Mtp3}} =
+        telco_stp_m2pa:decode(Binary),
+    case Mtp3 of
+        <<>> ->
+            receive_m2pa_transfer(Link, Attempts - 1);
+        _ ->
+            {ok, Transfer} = telco_stp_mtp3:decode(itu, Mtp3),
+            Transfer
+    end;
+receive_m2pa_transfer(Link, 0) ->
+    error({m2pa_transfer_receive_timeout, Link}).
 
 receive_m2pa_snmm(Link, Attempts) when Attempts > 0 ->
     {1, Binary} = receive_m2pa_binary(Link),
