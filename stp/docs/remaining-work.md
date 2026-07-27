@@ -65,7 +65,9 @@ Completed first slice:
   message families;
 - deterministic ITU/ANSI round-trip and malformed-vector tests;
 - M2PA ingress handling for TFP, TFR, TFA, TFC and UPU into the existing
-  destination-state constraints.
+  destination-state constraints;
+- M2PA COO/XCO/CBD acknowledgement with COA/XCA/CBA and link-status state
+  visibility.
 
 ## P0 — bounded ingress and overload control
 

@@ -20,6 +20,7 @@ advanced_stp_test_() ->
         fun m3ua_management_errors_and_notifications/0,
         fun m2pa_alignment_sequence_ack_and_retrieval/0,
         fun m2pa_snmm_transfer_management_controls_routes/0,
+        fun m2pa_changeover_changeback_acknowledgements/0,
         fun itu_signalling_link_test_is_acknowledged_on_source_link/0,
         fun authenticated_rbac_management_is_hash_chained/0,
         fun durable_audit_chain_resumes_after_restart/0,
@@ -655,6 +656,46 @@ m2pa_snmm_transfer_management_controls_routes() ->
     {ok, RestoredTransfer} = telco_stp_mtp3:decode(itu, EncodedMtp3),
     ?assertEqual(<<"SNMM-TFA">>, maps:get(payload, RestoredTransfer)).
 
+m2pa_changeover_changeback_acknowledgements() ->
+    {ok, _Pid} = telco_stp:add_link(#{
+        name => chm_m2pa,
+        linkset => chm_set,
+        adaptation => m2pa,
+        transport => telco_stp_transport_loopback,
+        peer => self(),
+        m2pa_proving_ms => 1,
+        m2pa_alignment_timeout_ms => 1000,
+        m2pa_t7_ms => 1000
+    }),
+    establish_m2pa(chm_m2pa),
+    inject_m2pa_snmm(chm_m2pa, 0, #{type => coo, fsn => 16#55}),
+    ?assertEqual(
+        #{type => coa, fsn => 16#55},
+        receive_m2pa_snmm(chm_m2pa)
+    ),
+    inject_m2pa_snmm(
+        chm_m2pa, 1, #{type => cbd, changeback_code => 16#44}
+    ),
+    ?assertEqual(
+        #{type => cba, changeback_code => 16#44},
+        receive_m2pa_snmm(chm_m2pa)
+    ),
+    [Link] = [
+        Item || Item <- telco_stp:links(),
+                maps:get(name, Item) =:= chm_m2pa
+    ],
+    NetworkManagement = maps:get(
+        network_management, maps:get(m2pa, Link)
+    ),
+    ?assertMatch(
+        #{type := cbd, changeback_code := 16#44},
+        maps:get(last_changeover, NetworkManagement)
+    ),
+    ?assertMatch(
+        #{type := cba, changeback_code := 16#44},
+        maps:get(last_changeover_ack_sent, NetworkManagement)
+    ).
+
 itu_signalling_link_test_is_acknowledged_on_source_link() ->
     add_loopback(slt_peer, slt_set, self()),
     {ok, Sltm} = telco_stp_slt:encode(#{
@@ -1208,6 +1249,27 @@ inject_m2pa_snmm(Link, Fsn, Snmm) ->
         mtp3 => Mtp3
     }),
     ok = telco_stp:inject_m2pa(Link, 1, M2pa).
+
+receive_m2pa_snmm(Link) ->
+    receive_m2pa_snmm(Link, 5).
+
+receive_m2pa_snmm(Link, Attempts) when Attempts > 0 ->
+    {1, Binary} = receive_m2pa_binary(Link),
+    {ok, #{type := user_data, mtp3 := Mtp3}} =
+        telco_stp_m2pa:decode(Binary),
+    case Mtp3 of
+        <<>> ->
+            receive_m2pa_snmm(Link, Attempts - 1);
+        _ ->
+            {ok, Transfer} = telco_stp_mtp3:decode(itu, Mtp3),
+            ?assertEqual(0, maps:get(si, Transfer)),
+            {ok, Snmm} = telco_stp_snmm:decode(
+                itu, maps:get(payload, Transfer)
+            ),
+            Snmm
+    end;
+receive_m2pa_snmm(Link, 0) ->
+    error({m2pa_snmm_receive_timeout, Link}).
 
 collect_ssnm(_Link, 0, Acc) ->
     lists:reverse(Acc);

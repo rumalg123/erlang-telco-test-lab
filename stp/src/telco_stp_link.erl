@@ -829,6 +829,7 @@ initial_m2pa_state() ->
         rx_fsn => ?STP_M2PA_MAX_SEQUENCE,
         peer_bsn => ?STP_M2PA_MAX_SEQUENCE,
         unacked => [],
+        network_management => #{},
         local_status => out_of_service,
         remote_status => out_of_service,
         proving_token => undefined,
@@ -1096,8 +1097,11 @@ receive_m2pa_mtp3(Fsn, Binary, Data) ->
                     },
                     ReceivedM2pa = M2pa#{rx_fsn => Fsn},
                     ReceivedData = Data#{m2pa => ReceivedM2pa},
-                    _ = handle_m2pa_mtp3_transfer(Transfer, ReceivedData),
-                    case send_m2pa_ack(ReceivedData) of
+                    TransferData = m2pa_transfer_data(
+                        handle_m2pa_mtp3_transfer(Transfer, ReceivedData),
+                        ReceivedData
+                    ),
+                    case send_m2pa_ack(TransferData) of
                         {ok, AckedData} ->
                             {keep_state, AckedData};
                         {error, Reason, FailedData} ->
@@ -1125,6 +1129,11 @@ receive_m2pa_mtp3(Fsn, Binary, Data) ->
             end
     end.
 
+m2pa_transfer_data({ok, NewData}, _Data) when is_map(NewData) ->
+    NewData;
+m2pa_transfer_data(_Result, Data) ->
+    Data.
+
 handle_m2pa_mtp3_transfer(
     #{si := ?STP_MTP3_SI_SNMM, payload := Payload} = Transfer,
     Data
@@ -1146,6 +1155,20 @@ handle_m2pa_mtp3_transfer(Transfer, Data) ->
     telco_stp_metrics:increment({m2pa, user_data, received}),
     ok.
 
+handle_m2pa_snmm(#{type := Type} = Snmm, Transfer, Data)
+        when Type =:= coo; Type =:= xco; Type =:= cbd ->
+    handle_m2pa_changeover_snmm(Snmm, Transfer, Data);
+handle_m2pa_snmm(#{type := Type} = Snmm, _Transfer, Data)
+        when Type =:= coa; Type =:= xca; Type =:= cba ->
+    M2pa = maps:get(m2pa, Data),
+    NetworkManagement = maps:get(network_management, M2pa, #{}),
+    Updated = NetworkManagement#{
+        last_acknowledgement => Snmm#{
+            received_at => erlang:monotonic_time(millisecond)
+        }
+    },
+    telco_stp_metrics:increment({snmm, Type}),
+    {ok, Data#{m2pa => M2pa#{network_management => Updated}}};
 handle_m2pa_snmm(#{type := Type} = Snmm, Transfer, Data)
         when Type =:= tfp; Type =:= tfr; Type =:= tfa;
              Type =:= tfc; Type =:= upu ->
@@ -1174,6 +1197,62 @@ handle_m2pa_snmm(#{type := Type}, _Transfer, _Data)
 handle_m2pa_snmm(#{type := Type}, _Transfer, _Data) ->
     telco_stp_metrics:increment({snmm, ignored, Type}),
     ok.
+
+handle_m2pa_changeover_snmm(#{type := Type} = Snmm, Transfer, Data) ->
+    M2pa = maps:get(m2pa, Data),
+    NetworkManagement0 = maps:get(network_management, M2pa, #{}),
+    Event = Snmm#{
+        received_at => erlang:monotonic_time(millisecond),
+        opc => maps:get(opc, Transfer),
+        dpc => maps:get(dpc, Transfer)
+    },
+    Ack = changeover_acknowledgement(Snmm),
+    case send_m2pa_snmm(Ack, Transfer, Data) of
+        {ok, SentData} ->
+            SentM2pa = maps:get(m2pa, SentData),
+            NetworkManagement = NetworkManagement0#{
+                last_changeover => Event,
+                last_changeover_ack_sent => Ack#{
+                    sent_at => erlang:monotonic_time(millisecond)
+                }
+            },
+            telco_stp_metrics:increment({snmm, Type}),
+            {ok, SentData#{m2pa => SentM2pa#{
+                network_management => NetworkManagement
+            }}};
+        {error, Reason, FailedData} ->
+            telco_stp_metrics:increment({snmm, changeover_ack_failed}),
+            raise_link_alarm(
+                snmm_changeover, warning,
+                #{reason => Reason, type => Type}, Data
+            ),
+            {error, FailedData#{last_error => {snmm_ack_failed, Reason}}}
+    end.
+
+changeover_acknowledgement(#{type := coo, fsn := Fsn}) ->
+    #{type => coa, fsn => Fsn};
+changeover_acknowledgement(#{type := xco, fsn := Fsn}) ->
+    #{type => xca, fsn => Fsn};
+changeover_acknowledgement(#{type := cbd, changeback_code := Code}) ->
+    #{type => cba, changeback_code => Code}.
+
+send_m2pa_snmm(Snmm, Transfer, Data) ->
+    Variant = maps:get(point_code_variant, Transfer),
+    case telco_stp_snmm:encode(Variant, Snmm) of
+        {ok, Payload} ->
+            Reply = #{
+                opc => maps:get(dpc, Transfer),
+                dpc => maps:get(opc, Transfer),
+                si => ?STP_MTP3_SI_SNMM,
+                ni => maps:get(ni, Transfer),
+                mp => maps:get(mp, Transfer),
+                sls => maps:get(sls, Transfer),
+                payload => Payload
+            },
+            send_m2pa_transfer(Reply, Data);
+        {error, Reason} ->
+            {error, {snmm_encode_failed, Reason}, Data}
+    end.
 
 snmm_destination_status(#{type := tfp}) -> unavailable;
 snmm_destination_status(#{type := tfr}) -> restricted;
@@ -1441,6 +1520,8 @@ m2pa_status(Data) ->
                 rx_fsn => maps:get(rx_fsn, M2pa),
                 peer_bsn => maps:get(peer_bsn, M2pa),
                 unacked => length(maps:get(unacked, M2pa)),
+                network_management =>
+                    maps:get(network_management, M2pa, #{}),
                 local_status => maps:get(local_status, M2pa),
                 remote_status => maps:get(remote_status, M2pa),
                 last_error => maps:get(last_error, M2pa)
