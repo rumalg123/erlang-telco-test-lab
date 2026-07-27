@@ -349,8 +349,10 @@ ssnm_status(scon, Params, Metadata) ->
 ssnm_status(dupu, Params, Metadata) ->
     case maps:find(user_cause, Params) of
         {ok, {Cause, User}}
-                when is_integer(Cause), Cause >= 0, Cause =< 16#ffff,
-                     is_integer(User), User >= 0, User =< 16#ffff ->
+                when is_integer(Cause), Cause >= 0,
+                     Cause =< ?STP_UINT16_MAX,
+                     is_integer(User), User >= 0,
+                     User =< ?STP_UINT16_MAX ->
             {ok, user_unavailable, Metadata#{
                 cause => Cause, user_part => User
             }};

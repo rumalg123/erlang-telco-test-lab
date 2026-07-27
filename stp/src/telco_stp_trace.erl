@@ -207,13 +207,13 @@ section_header_block() ->
     block(?STP_PCAPNG_SHB_TYPE, <<
         16#1a2b3c4d:32/little,
         1:16/little, 0:16/little,
-        16#ffffffffffffffff:64/little
+        ?STP_PCAPNG_UNSPECIFIED_SECTION_LENGTH:64/little
     >>).
 
 interface_description_block() ->
     block(?STP_PCAPNG_IDB_TYPE, <<
         ?STP_PCAPNG_DLT_USER0:16/little, 0:16,
-        16#00040000:32/little
+        ?STP_PCAPNG_DEFAULT_SNAPLEN:32/little
     >>).
 
 enhanced_packet_block(Packet) ->

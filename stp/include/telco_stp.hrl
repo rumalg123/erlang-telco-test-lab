@@ -11,6 +11,7 @@
 -define(STP_METRICS_TABLE, telco_stp_metrics_table).
 
 %% Common integer limits.
+-define(STP_UINT16_MAX, 16#ffff).
 -define(STP_UINT32_MAX, 16#ffffffff).
 -define(STP_POINT_CODE_MASK_24, 16#ffffff).
 -define(STP_MAX_MILLISECONDS, 3600000).
@@ -72,6 +73,8 @@
 -define(STP_PCAPNG_IDB_TYPE, 1).
 -define(STP_PCAPNG_EPB_TYPE, 6).
 -define(STP_PCAPNG_DLT_USER0, 147).
+-define(STP_PCAPNG_UNSPECIFIED_SECTION_LENGTH, 16#ffffffffffffffff).
+-define(STP_PCAPNG_DEFAULT_SNAPLEN, 16#00040000).
 
 %% Runtime defaults.
 -define(STP_DEFAULT_CALL_TIMEOUT_MS, 5000).

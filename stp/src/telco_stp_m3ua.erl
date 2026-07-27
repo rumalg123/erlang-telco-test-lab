@@ -266,7 +266,8 @@ encode_param(Tag, Value) when is_integer(Tag), is_binary(Value) ->
 encode_param(Key, Value) ->
     error({invalid_m3ua_parameter, Key, Value}).
 
-encode_tlv(Tag, Value) when is_integer(Tag), Tag >= 0, Tag =< 16#ffff,
+encode_tlv(Tag, Value)
+        when is_integer(Tag), Tag >= 0, Tag =< ?STP_UINT16_MAX,
                             is_binary(Value) ->
     Length = 4 + byte_size(Value),
     PadLength = (4 - (Length rem 4)) rem 4,
