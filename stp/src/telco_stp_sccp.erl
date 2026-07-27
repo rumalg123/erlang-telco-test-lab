@@ -669,8 +669,8 @@ option_name(Tag) ->
 
 option_tags() ->
     [
-        {segmentation, 16#10},
-        {importance, 16#12}
+        {segmentation, ?STP_SCCP_OPTION_SEGMENTATION},
+        {importance, ?STP_SCCP_OPTION_IMPORTANCE}
     ].
 
 encode_option(segmentation, Value) when is_map(Value) ->
@@ -680,7 +680,7 @@ encode_option(_Name, Value) when is_binary(Value) ->
 encode_option(Name, Value) ->
     error({invalid_sccp_option_value, Name, Value}).
 
-decode_option(16#10, Value) ->
+decode_option(?STP_SCCP_OPTION_SEGMENTATION, Value) ->
     {segmentation, decode_segmentation_value(Value)};
 decode_option(Tag, Value) ->
     {option_name(Tag), Value}.
